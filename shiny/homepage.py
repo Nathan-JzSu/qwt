@@ -213,16 +213,38 @@ def homepage_server(input, output, session):
         if data.empty:
             print("No data available for scatterplot")  # Debugging print
             return go.Figure()  # Return an empty figure
-        filtered_data = data[data["first_job_waiting_time"] > 0]
+        filtered_data = data[data["first_job_waiting_time"] >= 0]
+        oneP = filtered_data[data["job_type"] == "1-p"]
+        GPU = filtered_data[data["job_type"] == "GPU"]
+        MPI = filtered_data[filtered_data["job_type"].isin(
+            ["MPI job a", "MPI job budge", "MPI job as", "MPI job z", "MPI job 4"]
+        )]
+        MPI["job_type"] = "MPI" 
+        OMP = filtered_data[data["job_type"] == "omp"]
         # Group the filtered data by 'job_type' and sum the 'first_job_waiting_time'
-        grouped_data = filtered_data.groupby("job_type")["first_job_waiting_time"].sum().reset_index()
+        grouped_data = pd.concat([oneP, GPU, MPI, OMP])
+        grouped_data = grouped_data.groupby("job_type")["first_job_waiting_time"].median().reset_index()
         fig = px.scatter(
             grouped_data,
             x="first_job_waiting_time",
             y="job_type",
             color=None if color == "none" else color,
             trendline="lowess",
+            labels={
+                "first_job_waiting_time": "Median Waiting Time(sec)",
+                "job_type": "Job Type"
+            }
         )
+        for index, row in grouped_data.iterrows():
+            fig.add_annotation(
+                x=row["first_job_waiting_time"],
+                y=row["job_type"],
+                text=f"{row['first_job_waiting_time']}",
+                showarrow=False,
+                yshift=10,
+                font=dict(color="Red")
+            )
+
         return fig
 
     @render_plotly
