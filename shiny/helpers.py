@@ -37,12 +37,12 @@ def determine_job_type(row):
         'sandvik', 'sandvik-pub', 'sebas', 'sebas-pub', 'sgrace', 'sgrace-pub', 'siggers', 'siggers-pub', 
         'sorenson', 'sorenson-pub', 'spl', 'spl-pub', 'straub', 'straub-mpi', 'straub-pub', 'tcn', 
         'tcn-pub', 'thinfilament', 'thinfilament-gpu', 'thinfilament-gpu-pub', 'thinfilament-pub', 
-        'tsourakakisgroup', 'tsourakakisgroup-pub', 'u', 'v100', 'virtualgl', 'w', 'w-long', 'w28', 
+        'tsourakakisgroup', 'tsourakakisgroup-pub', 'v100', 'virtualgl', 'w', 'w-long', 'w28', 
         'wise', 'wise-pub', 'withers01', 'withers01-pub', 'wys-text', 'wys-text-pub', 'linga', 'geo', 'neuromorphics']:
         return 'removed'
     elif row['options'] and 'gpus=' in row['options']:
         return 'GPU'
-    elif qname is not None and qname in ['u', 'z', '4', 'a', 'as', 'budge', 'a128']:
+    elif qname is not None and qname in ['u','z', '4', 'a', 'as', 'budge', 'a128']:
         return 'MPI'
     elif row['slots'] == 1:
         return '1-p'

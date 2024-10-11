@@ -35,7 +35,7 @@ def process_data(year):
     df.sort_values(by='ux_submission_time', inplace=True)
 
     # Filter and select relevant columns
-    df = df[['qname', 'hostname', 'owner', 'job_number', 'ux_submission_time', 'ux_start_time', 'ux_end_time', 'granted_pe', 'slots', 'task_number', 'options', 'pe_taskid']]
+    df = df[['qname', 'hostname', 'owner', 'job_name', 'job_number', 'ux_submission_time', 'ux_start_time', 'ux_end_time', 'granted_pe', 'slots', 'task_number', 'options', 'pe_taskid', 'slots']]
     print("DataFrame loaded from Feather file:\n", df.head())
 
     # print("\nChecking for NaN values in specific columns before filtering:\n",
@@ -64,7 +64,7 @@ def filter_data_by_user(year):
 
     df = pd.read_feather(feather_file)
     # Filter and select relevant columns
-    df = df[['qname', 'hostname', 'owner', 'job_number', 'ux_submission_time', 'ux_start_time', 'ux_end_time', 'granted_pe', 'slots', 'task_number', 'options', 'pe_taskid']]
+    df = df[['qname', 'hostname', 'owner', 'job_name', 'job_number', 'ux_submission_time', 'ux_start_time', 'ux_end_time', 'granted_pe', 'task_number', 'options', 'pe_taskid', 'slots']]
     # Filter rows with non-null values in specified columns
     df = df.dropna(subset=['ux_submission_time', 'ux_start_time', 'ux_end_time'])
     # Sort the DataFrame by 'ux_submission_time'

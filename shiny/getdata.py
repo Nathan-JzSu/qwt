@@ -48,7 +48,7 @@ def acct_readfile(datafilepath, chunk_size=1000000):
         "ru_wallclock": 'Int64',
         "ru_utime": 'float',
         "ru_maxrss": 'float',
-        "slots": 'float',
+        "slots": 'Int64',
         "task_number": 'Int64',
         "cpu": 'float',
         "maxvmem": 'float'
@@ -84,7 +84,8 @@ def acct_rcsmetrics(output_datapath, datayear=None, dataset="scc"):
     datapath = "/projectnb/rcsmetrics/accounting/data"  # read source file from rcsmetrics/accounting
     
     if dataset == "scc":
-        datafile = os.path.join(datapath, dataset, str(datayear))
+        # datafile = os.path.join(datapath, dataset, str(datayear))
+        datafile = os.path.join(datapath, dataset, f"{datayear}.feather")
         
         if not os.path.exists(datafile):
             print("Prerotate Condition!")

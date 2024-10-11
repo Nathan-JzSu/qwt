@@ -195,12 +195,13 @@ def calculate_waiting_time_for_each_job_type(input_file_name, output_file_name, 
     # Save the results to a CSV file
     job_type_waiting_df.to_csv(output_file_name, index=False, chunksize=100000)
 
+
 def waiting_time_per_job_type(input_file_name, output_file_name, year):
     # Read data from the Feather file
     df = pd.read_feather(input_file_name)
 
     # filter cols we need
-    df = df[['ux_submission_time', 'ux_start_time', 'ux_end_time', 'granted_pe', 'slots', 'options', 'pe_taskid', 'qname', 'job_number', 'owner']]
+    df = df[['ux_submission_time', 'ux_start_time', 'ux_end_time', 'granted_pe', 'slots', 'options', 'pe_taskid', 'qname', 'job_number', 'owner', 'job_name', 'task_number']]
     
     # Apply the function to create the job_type column
     df['job_type'] = df.apply(determine_job_type, axis=1)
@@ -212,105 +213,80 @@ def waiting_time_per_job_type(input_file_name, output_file_name, year):
 
     df['year'] = year
 
-    job_type_waiting_times = {}
+    job_type_waiting_times = []
     
     for job_type, group in tqdm(df.groupby('job_type'), desc="Processing job types"):
         if job_type == 'removed':
             continue
 
         if job_type == 'GPU':
-            job_type_waiting_times['GPU'] = []
-            job_type_waiting_times['GPU = 1'] = []
             months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
             latest_end_times = {month: 0 for month in months}
-            gpu_waiting_times = {month: [] for month in months} # all gpu job
+            gpu_waiting_times = {month: [] for month in months}  # All GPU jobs
             gpu_1_latest_end_times = {month: 0 for month in months}
-            gpu_1_waiting_times = {month: [] for month in months} # gpu = 1 job
+            gpu_1_waiting_times = {month: [] for month in months}  # GPU = 1 jobs
             for index, row in group.iterrows():
                 submission_time = row['ux_submission_time']
                 start_time = row['ux_start_time']
                 end_time = row['ux_end_time']
-                month = datetime.datetime.fromtimestamp(submission_time).strftime('%b')
-                if submission_time > latest_end_times[month]:
-                    current_waiting_time = start_time - submission_time
-                    # gpu_waiting_times[month].append([current_waiting_time, month])
-                    job_type_waiting_times['GPU'].append([current_waiting_time, month])
-                    if current_waiting_time > 3600 * 5:
-                        print(row)
-
-                if end_time > latest_end_times[month]:
-                    latest_end_times[month] = end_time
-                
-                if 'gpus=1' in row['options']:
-                    if submission_time > gpu_1_latest_end_times[month]:
+                initialYear = datetime.datetime.fromtimestamp(submission_time).year
+                if initialYear == year:
+                    month = datetime.datetime.fromtimestamp(submission_time).strftime('%b')
+                    if submission_time > latest_end_times[month]:
                         current_waiting_time = start_time - submission_time
-                        # gpu_1_waiting_times[month].append([current_waiting_time, month])
-                        job_type_waiting_times['GPU = 1'].append([current_waiting_time, month])
+                        job_type_waiting_times.append([job_type, current_waiting_time, month, year, row['job_number'], row['slots']])
 
-                    if end_time > gpu_1_latest_end_times[month]:
-                        gpu_1_latest_end_times[month] = end_time
+                    if end_time > latest_end_times[month]:
+                        latest_end_times[month] = end_time
+                    
+                    if 'gpus=1' in row['options']:
+                        if submission_time > gpu_1_latest_end_times[month]:
+                            current_waiting_time = start_time - submission_time
+                            job_type_waiting_times.append(['GPU = 1', current_waiting_time, month, year, row['job_number'], row['slots']])
 
-            # for month in months:
-            #     job_type_waiting_times[f'GPU job in: {month}'] = gpu_waiting_times[month]
-            #     job_type_waiting_times[f'GPU = 1 job in: {month}'] = gpu_1_waiting_times[month]
+                        if end_time > gpu_1_latest_end_times[month]:
+                            gpu_1_latest_end_times[month] = end_time
 
         elif job_type == 'MPI':
-            qnames = ['u', 'z', '4', 'a', 'as', 'budge', 'a128']
+            qnames = ['z', 'u', '4', 'a', 'as', 'budge', 'a128']
             latest_end_times = {qname: 0 for qname in qnames}
-            MPI_waiting_times = {qname: [] for qname in qnames}
             for index, row in group.iterrows():
                 submission_time = row['ux_submission_time']
                 start_time = row['ux_start_time']
                 end_time = row['ux_end_time']
-                month = datetime.datetime.fromtimestamp(submission_time).strftime('%b')
-                qname = row['qname']
-                if qname == 'a128':
-                    qname = 'a'
-                if submission_time > latest_end_times[qname]:
-                    current_waiting_time = start_time - submission_time
-                    MPI_waiting_times[qname].append([current_waiting_time, month])
-                if end_time > latest_end_times[qname]:
-                    latest_end_times[qname] = end_time
-            
-            for qname in qnames:
-                job_type_waiting_times[f'MPI job {qname}'] = MPI_waiting_times[qname]
+                initialYear = datetime.datetime.fromtimestamp(submission_time).year
+                if initialYear == year:
+                    month = datetime.datetime.fromtimestamp(submission_time).strftime('%b')
+                    qname = row['qname']
+                    if qname == 'a128':
+                        qname = 'a'
+                    if submission_time > latest_end_times[qname]:
+                        current_waiting_time = start_time - submission_time
+                        job_type_waiting_times.append([f'MPI job {qname}', current_waiting_time, month, year, row['job_number'], row['slots']])
+
+                    if end_time > latest_end_times[qname]:
+                        latest_end_times[qname] = end_time
 
         else:
             latest_end_times = 0
-            waiting_times = []
             for index, row in group.iterrows():
                 submission_time = row['ux_submission_time']
                 start_time = row['ux_start_time']
                 end_time = row['ux_end_time']
-                month = datetime.datetime.fromtimestamp(submission_time).strftime('%b')
-                if submission_time > latest_end_times:
-                    current_waiting_time = start_time - submission_time
-                    waiting_times.append([current_waiting_time, month])
-                if end_time > latest_end_times:
-                    latest_end_times = end_time
-                
-            job_type_waiting_times[f'{job_type}'] = waiting_times
-
-    # Flatten the dictionary for creating the DataFrame
-    flattened_data = []
-    for job_type, times in job_type_waiting_times.items():
-        for time, month in times:
-            flattened_data.append({
-                'job_type': job_type,
-                'first_job_waiting_time': time,
-                'month': month
-            })
+                initialYear = datetime.datetime.fromtimestamp(submission_time).year
+                if initialYear == year:
+                    month = datetime.datetime.fromtimestamp(submission_time).strftime('%b')
+                    if submission_time > latest_end_times:
+                        current_waiting_time = start_time - submission_time
+                        job_type_waiting_times.append([job_type, current_waiting_time, month, year, row['job_number'], row['slots']])
+                    if end_time > latest_end_times:
+                        latest_end_times = end_time
 
     # Convert the results to a DataFrame
-    job_type_waiting_df = pd.DataFrame(flattened_data)
-
-    # Add the 'year' column
-    job_type_waiting_df['year'] = df['year'].iloc[0]
+    job_type_waiting_df = pd.DataFrame(job_type_waiting_times, columns=['job_type', 'first_job_waiting_time', 'month', 'year', 'job_number', 'slots'])
 
     # Save the results to a CSV file
     job_type_waiting_df.to_csv(output_file_name, index=False, chunksize=100000)
-
-
 
 
 

@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 # Load data and compute static values
 from shared import dataset
 
+dataset = dataset.dropna()
 # Adjust the column to get the min and max waiting time
 bill_rng = (dataset.first_job_waiting_time.min(), dataset.first_job_waiting_time.max())
 # Ensure the 'year' column is of integer type
@@ -15,6 +16,7 @@ dataset['year'] = dataset['year'].astype(int)
 
 month_order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 dataset['month'] = pd.Categorical(dataset['month'], categories=month_order, ordered=True)
+cpus = sorted(dataset.slots.unique().tolist())
 
 ICONS = {
     "min": fa.icon_svg("arrow-down"),
@@ -32,29 +34,9 @@ ICONS = {
     "heart": fa.icon_svg("heart"),
 }
 
-# UI for the homepage
-def homepage_ui():
-    return ui.page_sidebar(
-        ui.sidebar(
-            ui.input_slider(
-                "first_job_waiting_time",
-                "Waiting Time",
-                min=bill_rng[0],
-                max=bill_rng[1],
-                value=bill_rng,
-                post=" s",
-            ),
-            ui.input_checkbox_group(
-                "job_type",
-                "Job Type",
-                list(dataset.job_type.unique()),
-                selected=list(dataset.job_type.unique()),
-                inline=True,
-            ),
-            ui.input_action_button("select_all", "Select All"),
-            ui.input_action_button("unselect_all", "Unselect All"),
-            open="desktop",
-        ),
+# UI for the MPI Job page
+def mpi_job_ui():
+    return ui.page_fluid(
         ui.input_checkbox_group(
             "years",  # ID should be "years"
             "Select Year(s)",
@@ -62,7 +44,15 @@ def homepage_ui():
             selected=[2024],  # Default to selecting the year 2024
             inline=True  # Arrange checkboxes horizontally
         ),
-
+        ui.input_checkbox_group(
+            "cpus",  
+            "Select CPU Cores",
+            cpus,  
+            selected=cpus,  
+            inline=True  
+        ),
+        ui.input_action_button("select_all_cpus", "Select All", class_="btn btn-primary btn-sm", style="margin-right: 5px; padding: 6px 12px;"),
+        ui.input_action_button("unselect_all_cpus", "Unselect All", class_="btn btn-secondary btn-sm", style="padding: 6px 12px;"),
         ui.layout_columns(
             ui.value_box(
                 "Min Waiting Time", ui.output_text("min_waiting_time"), showcase=ICONS["min"]
@@ -114,44 +104,40 @@ def homepage_ui():
             ),
             ui.card(
                 ui.card_header(
-                    "3D Bubble Chart of Average Job Waiting Time by Year & Job Type",
+                    "Box Plot of Job Waiting Time by CPU Cores",
                     class_="d-flex justify-content-between align-items-center"
                 ),
-                output_widget("job_waiting_time_3d"),  # Display the 3D bubble chart rendered by the render function
+                output_widget("job_waiting_time_by_cpu"),  
                 full_screen=True
             ),
-            col_widths=[6, 6, 6, 6]
+            col_widths=[6, 6, 6, 6]  # Adjust column widths as needed
         ),
         fillable=True,
     )
 
-# Server logic for the homepage
-def homepage_server(input, output, session):
-    print("Homepage server function called")
+# Server logic for the MPI Job page
+def mpi_job_server(input, output, session):
+    print("MPI Job server function called")
 
     @reactive.calc
     def dataset_data():
-        print("dataset_data function called")
-        print(input.first_job_waiting_time())
-        print(input.years())
-        bill = input.first_job_waiting_time()
+        print("dataset_data function called for MPI Job")
         years = input.years()
-        
-        print(f"Input Waiting Time: {bill}")  # Debugging print
+        cpus_selected = input.cpus()
+
         print(f"Input Years: {years}")
 
         # Convert selected years to integers
         years = list(map(int, years))
-        
-        idx1 = dataset.first_job_waiting_time.between(bill[0], bill[1])
-        idx2 = dataset.job_type.isin(input.job_type())
-        idx3 = dataset.year.isin(years) if years else True  # Check for selected years if any
+        cpus_selected = list(map(float, cpus_selected)) if cpus_selected else []  # Handle the case where no CPUs are selected
 
-        filtered_data = dataset[idx1 & idx2 & idx3]
-        
-        print(f"Filtered Data: {filtered_data}")  # Debugging print
-        # return filtered_data
-        return filtered_data[['job_type', 'first_job_waiting_time', 'month', 'job_number', 'year', 'slots']]
+        idx2 = dataset.job_type.str.contains("MPI")  # Assuming 'job_type' column contains GPU jobs
+        idx3 = dataset.year.isin(years) if years else True  # Check for selected years if any
+        idx4 = dataset.slots.isin(cpus_selected) if cpus_selected else True  # Filter for selected CPUs
+
+        filtered_data = dataset[idx2 & idx3 & idx4]
+        print(f"Filtered Data for MPI Job: {filtered_data}")  # Debugging print
+        return filtered_data
 
     @output
     @render.data_frame
@@ -170,12 +156,10 @@ def homepage_server(input, output, session):
 
         return data_renamed
 
-
     # Define the rendering logic for the waiting times
     @render.text
     def min_waiting_time():
-        d = dataset_data()  # Replace with your data fetching logic
-        print(f"Min Waiting Time Data Shape: {d.shape}")
+        d = dataset_data()
         if d.shape[0] > 0:
             min_waiting_time = d.first_job_waiting_time.min() / 60
             if min_waiting_time > 60:
@@ -186,7 +170,7 @@ def homepage_server(input, output, session):
 
     @render.text
     def max_waiting_time():
-        d = dataset_data()  # Replace with your data fetching logic
+        d = dataset_data()
         if d.shape[0] > 0:
             max_waiting_time = d.first_job_waiting_time.max() / 60
             if max_waiting_time > 60:
@@ -197,7 +181,7 @@ def homepage_server(input, output, session):
 
     @render.text
     def mean_waiting_time():
-        d = dataset_data()  # Replace with your data fetching logic
+        d = dataset_data()
         if d.shape[0] > 0:
             mean_waiting_time = d.first_job_waiting_time.mean() / 60
             if mean_waiting_time > 60:
@@ -208,7 +192,7 @@ def homepage_server(input, output, session):
 
     @render.text
     def median_waiting_time():
-        d = dataset_data()  # Replace with your data fetching logic
+        d = dataset_data()
         if d.shape[0] > 0:
             med_waiting_time = d.first_job_waiting_time.median() / 60
             if med_waiting_time > 60:
@@ -219,10 +203,10 @@ def homepage_server(input, output, session):
 
     @render.data_frame
     def table():
-        df = dataset_data()  # Replace with your data fetching logic
+        df = dataset_data()
         df_modified = df.copy()
         df_modified['first_job_waiting_time'] = (df_modified['first_job_waiting_time'] / 60).round(2)  # Convert waiting time from seconds to minutes
-        df_modified.rename(columns={'first_job_waiting_time': 'first_job_waiting_time (min)'}, inplace=True)            
+        df_modified.rename(columns={'first_job_waiting_time': 'first_job_waiting_time (min)'}, inplace=True)
         return render.DataGrid(df_modified)
 
     @render_plotly
@@ -230,20 +214,12 @@ def homepage_server(input, output, session):
         color = input.scatter_color()
         data = dataset_data()
         if data.empty:
-            print("No data available for scatterplot")  # Debugging print
+            print("No data available for scatterplot in MPI Job")  # Debugging print
             return go.Figure()  # Return an empty figure
         filtered_data = data[data["first_job_waiting_time"] >= 0]
         filtered_data['first_job_waiting_time'] = (filtered_data['first_job_waiting_time'] / 60).round(2)
-        oneP = filtered_data[data["job_type"] == "1-p"]
-        GPU = filtered_data[data["job_type"] == "GPU"]
-        MPI = filtered_data[filtered_data["job_type"].isin(
-            ["MPI job a", "MPI job budge", "MPI job as", "MPI job z", "MPI job 4"]
-        )]
-        MPI["job_type"] = "MPI" 
-        OMP = filtered_data[data["job_type"] == "omp"]
         # Group the filtered data by 'job_type' and sum the 'first_job_waiting_time'
-        grouped_data = pd.concat([oneP, GPU, MPI, OMP])
-        grouped_data = grouped_data.groupby("job_type")["first_job_waiting_time"].median().reset_index()
+        grouped_data = filtered_data.groupby("job_type")["first_job_waiting_time"].median().reset_index()
         fig = px.scatter(
             grouped_data,
             x="first_job_waiting_time",
@@ -264,7 +240,6 @@ def homepage_server(input, output, session):
                 yshift=10,
                 font=dict(color="Red")
             )
-
         return fig
 
     @render_plotly
@@ -324,51 +299,90 @@ def homepage_server(input, output, session):
         return fig
 
     @render_plotly
-    def job_waiting_time_3d():
+    def job_waiting_time_by_cpu():
         data = dataset_data()
-        # Filter data for job types and years
-        data = data[data['job_type'].isin(input.job_type())]
+    
         data = data[data['year'].isin(map(int, input.years()))]
-        # Aggregate waiting time by month, year, and job_type
-        data = data.groupby(['year', 'month', 'job_type'])['first_job_waiting_time'].mean().reset_index()
-        # Convert waiting time from seconds to hours
-        data['first_job_waiting_time (hours)'] = data['first_job_waiting_time'] / 3600
-        # Check for and handle NaN values
-        data['first_job_waiting_time (hours)'].fillna(0, inplace=True)  # Replace NaNs with 0
-        # Ensure 'month' is categorical and ordered correctly
-        month_order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        data['month'] = pd.Categorical(data['month'], categories=month_order, ordered=True)
-        # Create 3D scatter plot
-        fig = px.scatter_3d(
-            data, 
-            x='month', 
-            y='job_type', 
-            z='first_job_waiting_time (hours)', 
-            size='first_job_waiting_time (hours)', 
-            color='month', 
-            hover_data=['year', 'job_type'],
-            title="3D Bubble Chart of Job Waiting Time by Month & Job Type"
+        
+        data['job_waiting_time (hours)'] = data['first_job_waiting_time'] / 3600
+        data['slots'] = data['slots'].astype(int)
+        data = data.sort_values(by='slots')
+        data['slots'] = data['slots'].astype(str)
+
+        fig = px.box(
+            data,
+            x='month',
+            y='job_waiting_time (hours)',
+            color='year',
+            facet_col='slots',
+            title="Job Waiting Time by CPU Cores",
+            labels={
+                "job_waiting_time (hours)": "Job Waiting Time (hours)"
+            }
         )
-        # Update layout to ensure all months are displayed
+        
+        # Update layout for better visualization
         fig.update_layout(
-            scene=dict(
-                xaxis=dict(
-                    tickmode='array',
-                    tickvals=list(range(12)),
-                    ticktext=month_order
-                )
-            ),
-            scene_zaxis_type="linear"  # Set z-axis to linear scale
+            yaxis=dict(range=[0, 20]),  # Adjust Y-axis to focus on lower range
+            boxmode='group',  # Group boxes for better comparison
+            title=None,  # Remove the main title
+            showlegend=True  # Show legend for better understanding
         )
+
+        # Remove the subplot (facet) titles
+        for annotation in list(fig['layout']['annotations']):
+            annotation['text'] = annotation['text'][6:]
+
+        # Remove x-axis title for all subplots
+        for axis in fig.layout:
+            if axis.startswith('xaxis'):
+                fig.layout[axis].title.text = None
+
+        # Update traces to include jittered points with a distinct color
+        fig.update_traces(
+            marker=dict(
+                size=6,  # Adjust marker size
+                opacity=0.7,  # Adjust marker opacity
+                color='blue',  # Set point color to a contrasting color (e.g., blue)
+                line=dict(width=1, color='white')  # Add a white outline for further contrast
+            ),
+            boxpoints='all',  # Show all points
+            jitter=0.3,  # Add jitter for better visibility
+            pointpos=0  # Position the points within the box
+        )
+
+        # Ensure consistent
+        fig.update_xaxes(categoryorder='array', categoryarray=month_order)
+
         return fig
 
     @reactive.effect
     @reactive.event(input.select_all)
     def _():
-        ui.update_checkbox_group("job_type", selected=list(dataset.job_type.unique()))
+        ui.update_checkbox_group("job_type", selected=[job for job in dataset.job_type.unique() if "MPI" in job])
 
     @reactive.effect
     @reactive.event(input.unselect_all)
     def _():
         ui.update_checkbox_group("job_type", selected=[])
 
+    @reactive.effect
+    @reactive.event(input.cpus)
+    def _():
+        selected_cpus = input.cpus()  # Get selected CPUs
+        # Example: Filter dataset or update UI components based on selected CPUs
+        filtered_jobs = dataset[dataset['slots'].isin(selected_cpus)]
+
+    @reactive.effect
+    @reactive.event(input.select_all_cpus)
+    def _():
+        # Select all CPU cores when "Select All" button is clicked
+        cpus = sorted(dataset.slots.unique().tolist())
+        cpus_str = list(map(str, cpus))  # Convert integers to strings
+        ui.update_checkbox_group("cpus", selected=cpus_str)
+
+    @reactive.effect
+    @reactive.event(input.unselect_all_cpus)
+    def _():
+        # Unselect all CPU cores when "Unselect All" button is clicked
+        ui.update_checkbox_group("cpus", selected=[])

@@ -60,7 +60,7 @@ def gpu_job_ui():
         ui.layout_columns(
             ui.card(
                 ui.card_header("Dataset Data"),
-                ui.output_data_frame("table"),  # Display the table rendered by the render function
+                ui.output_data_frame("displayTable"),  # Display the table rendered by the render function
                 full_screen=True
             ),
             ui.card(
@@ -115,6 +115,23 @@ def gpu_job_server(input, output, session):
         filtered_data = dataset[idx2 & idx3]
         print(f"Filtered Data for GPU Job: {filtered_data}")  # Debugging print
         return filtered_data
+
+    @output
+    @render.data_frame
+    def displayTable():
+        data = dataset_data()  # Get the data from the reactive dataset function
+        
+        # Rename columns only for display purposes
+        data_renamed = data.rename(columns={
+            'job_type': 'Job Type',
+            'first_job_waiting_time': 'Waiting Time',
+            'month': 'Month',
+            'job_number': 'Job Number',
+            'year': 'Year',
+            'slots': 'CPU Cores'
+        })
+
+        return data_renamed
 
     # Define the rendering logic for the waiting times
     @render.text

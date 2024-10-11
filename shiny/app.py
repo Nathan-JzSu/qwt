@@ -1,6 +1,8 @@
 from shiny import App, reactive, render, ui
 from homepage import homepage_ui, homepage_server
 from gpu_job import gpu_job_ui, gpu_job_server
+from mpi_job import mpi_job_ui, mpi_job_server
+from omp_job import omp_job_ui, omp_job_server
 
 # Import additional page logic if needed (e.g., GPU Job, MPI Job)
 # from gpu_job import gpu_job_ui, gpu_job_server
@@ -38,9 +40,9 @@ def server(input, output, session):
         elif current_page.get() == "GPU Job":
             return gpu_job_ui()
         elif current_page.get() == "MPI Job":
-            return ui.page_fluid("MPI Job Page (UI to be implemented)")
+            return mpi_job_ui()
         elif current_page.get() == "OMP Job":
-            return ui.page_fluid("OMP Job Page (UI to be implemented)")
+            return omp_job_ui()
 
     # Dynamically call server logic based on the current page
     @reactive.effect
@@ -49,8 +51,9 @@ def server(input, output, session):
             homepage_server(input, output, session)
         elif current_page.get() == "GPU Job":
             gpu_job_server(input, output, session)
-        # Add logic here if you implement separate server logic for "MPI Job"
-        # elif current_page.get() == "MPI Job":
-        #     mpi_job_server(input, output, session)
+        elif current_page.get() == "MPI Job":
+            mpi_job_server(input, output, session)
+        elif current_page.get() == "OMP Job":
+            omp_job_server(input, output, session)
 
 app = App(app_ui, server)
