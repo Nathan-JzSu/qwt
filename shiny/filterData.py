@@ -36,7 +36,10 @@ def process_data(year):
 
     # Filter and select relevant columns
     df = df[['qname', 'hostname', 'owner', 'job_name', 'job_number', 'ux_submission_time', 'ux_start_time', 'ux_end_time', 'granted_pe', 'slots', 'task_number', 'options', 'pe_taskid', 'slots']]
+    
+    df.sort_values(by='job_number', inplace=True)
     print("DataFrame loaded from Feather file:\n", df.head())
+    return 
 
     # print("\nChecking for NaN values in specific columns before filtering:\n",
     #       df[['ux_submission_time', 'ux_start_time', 'ux_end_time']].isna().sum())
@@ -56,7 +59,7 @@ def process_data(year):
     print_first_rows(df_verified, "Verified DataFrame from Feather file")
 
 def filter_data_by_user(year):
-    feather_file = f'/projectnb/rcs-intern/Jiazheng/accounting/data/scc/{year}.feather'
+    feather_file = f'/projectnb/rcs-intern/Jiazheng/accounting/data/scc/{year}-test.feather'
 
     if not os.path.exists(feather_file):
         print(f"File {feather_file} does not exist.")
@@ -69,29 +72,36 @@ def filter_data_by_user(year):
     df = df.dropna(subset=['ux_submission_time', 'ux_start_time', 'ux_end_time'])
     # Sort the DataFrame by 'ux_submission_time'
     df.sort_values(by='ux_submission_time', inplace=True)
+    df.sort_values(by='job_number', inplace=True)
+    print("DataFrame loaded from Feather file:\n", df.head())
+    return 
+
+
+    
     print("start getting new data")
     
     output_feather_file = f'/projectnb/rcs-intern/Jiazheng/accounting/data/scc/{year}-filtered.feather'
     
     # Initialize a mask with False values, with the same index as the DataFrame
-    filtered_mask = pd.Series([False] * len(df), index=df.index)
+    # filtered_mask = pd.Series([False] * len(df), index=df.index)
 
-    for owner, group in df.groupby('owner'):
-        prev_latest_end_time = 0
+    # for owner, group in df.groupby('owner'):
+    #     prev_latest_end_time = 0
 
-        for index, row in group.iterrows():
-            submission_time = row['ux_submission_time']
-            start_time = row['ux_start_time']
-            end_time = row['ux_end_time']
+    #     for index, row in group.iterrows():
+    #         submission_time = row['ux_submission_time']
+    #         start_time = row['ux_start_time']
+    #         end_time = row['ux_end_time']
 
-            if prev_latest_end_time is not None and submission_time > prev_latest_end_time: # find a 'first' job for current user
-                filtered_mask.at[index] = True
+    #         if prev_latest_end_time is not None and submission_time > prev_latest_end_time: # find a 'first' job for current user
+    #             filtered_mask.at[index] = True
 
-            if end_time > prev_latest_end_time: # update the latest end time
-                prev_latest_end_time = end_time
+    #         if end_time > prev_latest_end_time: # update the latest end time
+    #             prev_latest_end_time = end_time
 
-    # Apply the mask to the DataFrame and save the filtered data
-    filtered_df = df[filtered_mask]
+    # # Apply the mask to the DataFrame and save the filtered data
+    # filtered_df = df[filtered_mask]
+    filtered_df = df
     filtered_df = filtered_df.sort_values(by='ux_submission_time', ascending=True)
     filtered_df.reset_index(drop=True, inplace=True) # Reset index to avoid issues with duplicate indices
     filtered_df.to_feather(output_feather_file)

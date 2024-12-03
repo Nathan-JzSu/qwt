@@ -232,13 +232,6 @@ def waiting_time_per_job_type(input_file_name, output_file_name, year):
                 initialYear = datetime.datetime.fromtimestamp(submission_time).year
                 if initialYear == year:
                     month = datetime.datetime.fromtimestamp(submission_time).strftime('%b')
-                    if submission_time > latest_end_times[month]:
-                        current_waiting_time = start_time - submission_time
-                        job_type_waiting_times.append([job_type, current_waiting_time, month, year, row['job_number'], row['slots']])
-
-                    if end_time > latest_end_times[month]:
-                        latest_end_times[month] = end_time
-                    
                     if 'gpus=1' in row['options']:
                         if submission_time > gpu_1_latest_end_times[month]:
                             current_waiting_time = start_time - submission_time
@@ -246,6 +239,15 @@ def waiting_time_per_job_type(input_file_name, output_file_name, year):
 
                         if end_time > gpu_1_latest_end_times[month]:
                             gpu_1_latest_end_times[month] = end_time
+
+                    elif submission_time > latest_end_times[month]:
+                        current_waiting_time = start_time - submission_time
+                        job_type_waiting_times.append(['GPU > 1', current_waiting_time, month, year, row['job_number'], row['slots']])
+
+                    if end_time > latest_end_times[month]:
+                        latest_end_times[month] = end_time
+                    
+                    
 
         elif job_type == 'MPI':
             qnames = ['z', 'u', '4', 'a', 'as', 'budge', 'a128']

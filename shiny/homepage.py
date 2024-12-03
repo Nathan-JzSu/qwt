@@ -24,13 +24,27 @@ ICONS = {
     "currency-dollar": fa.icon_svg("dollar-sign"),
     "ellipsis": fa.icon_svg("ellipsis"),
     "clock": fa.icon_svg("clock"),
+    "speed": fa.icon_svg("gauge"),
     "chart-bar": fa.icon_svg("chart-bar"),
     "calendar": fa.icon_svg("calendar"),
     "comment": fa.icon_svg("comment"),
     "bell": fa.icon_svg("bell"),
     "camera": fa.icon_svg("camera"),
     "heart": fa.icon_svg("heart"),
+    "count": fa.icon_svg("list"),
 }
+
+def format_time_range(value_range):
+    """Helper function to format time in appropriate units."""
+    min_time, max_time = value_range
+    if max_time >= 3600:   
+        return (int(min_time / 3600), int(max_time / 3600)), "Hours"
+    elif max_time >= 60:   
+        return (int(min_time / 60), int(max_time / 60)), "Minutes"
+    else:   
+        return (int(min_time), int(max_time)), "Seconds"
+        
+formatted_range, unit_label = format_time_range(bill_rng)
 
 # UI for the homepage
 def homepage_ui():
@@ -38,11 +52,10 @@ def homepage_ui():
         ui.sidebar(
             ui.input_slider(
                 "first_job_waiting_time",
-                "Waiting Time",
-                min=bill_rng[0],
-                max=bill_rng[1],
-                value=bill_rng,
-                post=" s",
+                f"Waiting Time ({unit_label})",  # Add dynamic unit label
+                min=max(0, formatted_range[0]),  # Ensure minimum is >= 0
+                max=formatted_range[1],
+                value=(max(0, formatted_range[0]), formatted_range[1]),
             ),
             ui.input_checkbox_group(
                 "job_type",
@@ -71,10 +84,13 @@ def homepage_ui():
                 "Max Waiting Time", ui.output_text("max_waiting_time"), showcase=ICONS["max"]
             ),
             ui.value_box(
-                "Mean Waiting Time", ui.output_text("mean_waiting_time"), showcase=ICONS["mean"]
+                "Mean Waiting Time", ui.output_text("mean_waiting_time"), showcase=ICONS["speed"]
             ),
             ui.value_box(
                 "Median Waiting Time", ui.output_text("median_waiting_time"), showcase=ICONS["median"]
+            ),
+            ui.value_box(
+                "Number of Jobs", ui.output_text("job_count"), showcase=ICONS["count"]
             ),
             fill=False,
         ),
@@ -101,7 +117,7 @@ def homepage_ui():
                     ),
                     class_="d-flex justify-content-between align-items-center",
                 ),
-                output_widget("scatterplot"),  # Display the scatterplot rendered by the render function
+                output_widget("barplot"),  # Display the barplot rendered by the render function
                 full_screen=True
             ),
             ui.card(
@@ -143,7 +159,7 @@ def homepage_server(input, output, session):
         # Convert selected years to integers
         years = list(map(int, years))
         
-        idx1 = dataset.first_job_waiting_time.between(bill[0], bill[1])
+        idx1 = dataset.first_job_waiting_time.between(bill[0] * 3600, bill[1] * 3600)
         idx2 = dataset.job_type.isin(input.job_type())
         idx3 = dataset.year.isin(years) if years else True  # Check for selected years if any
 
@@ -156,12 +172,20 @@ def homepage_server(input, output, session):
     @output
     @render.data_frame
     def displayTable():
-        data = dataset_data()  # Get the data from the reactive dataset function
+        data = dataset_data().copy()  # Get the data from the reactive dataset function
+
+        data['first_job_waiting_time'] = data['first_job_waiting_time'].apply(
+            # lambda x: f"{x / 3600:.1f} (hr)" if x > 3600 else f"{x / 60:.1f} (min)"
+            lambda x: f"{x / 60:.1f}"
+        )
         
+        # Sort the data by 'job_number' (Job ID) in ascending order
+        data = data.sort_values(by='job_number', ascending=True)
+
         # Rename columns only for display purposes
         data_renamed = data.rename(columns={
             'job_type': 'Job Type',
-            'first_job_waiting_time': 'Waiting Time',
+            'first_job_waiting_time': 'Waiting Time (min)',
             'month': 'Month',
             'job_number': 'Job Number',
             'year': 'Year',
@@ -179,9 +203,9 @@ def homepage_server(input, output, session):
         if d.shape[0] > 0:
             min_waiting_time = d.first_job_waiting_time.min() / 60
             if min_waiting_time > 60:
-                return f"{min_waiting_time / 60:.2f} hour"
+                return f"{min_waiting_time / 60:.1f} hours"
             else:
-                return f"{min_waiting_time:.2f} min"
+                return f"{min_waiting_time:.1f} min"
         return "No data available"
 
     @render.text
@@ -190,9 +214,9 @@ def homepage_server(input, output, session):
         if d.shape[0] > 0:
             max_waiting_time = d.first_job_waiting_time.max() / 60
             if max_waiting_time > 60:
-                return f"{max_waiting_time / 60:.2f} hour"
+                return f"{max_waiting_time / 60:.1f} hours"
             else:
-                return f"{max_waiting_time:.2f} min"
+                return f"{max_waiting_time:.1f} min"
         return "No data available"
 
     @render.text
@@ -201,9 +225,9 @@ def homepage_server(input, output, session):
         if d.shape[0] > 0:
             mean_waiting_time = d.first_job_waiting_time.mean() / 60
             if mean_waiting_time > 60:
-                return f"{mean_waiting_time / 60:.2f} hour"
+                return f"{mean_waiting_time / 60:.1f} hours"
             else:
-                return f"{mean_waiting_time:.2f} min"
+                return f"{mean_waiting_time:.1f} min"
         return "No data available"
 
     @render.text
@@ -212,10 +236,15 @@ def homepage_server(input, output, session):
         if d.shape[0] > 0:
             med_waiting_time = d.first_job_waiting_time.median() / 60
             if med_waiting_time > 60:
-                return f"{med_waiting_time / 60:.2f} hour"
+                return f"{med_waiting_time / 60:.1f} hours"
             else:
-                return f"{med_waiting_time:.2f} min"
+                return f"{med_waiting_time:.1f} min"
         return "No data available"
+
+    @render.text
+    def job_count():
+        d = dataset_data()
+        return f"{d.shape[0]}"
 
     @render.data_frame
     def table():
@@ -226,46 +255,47 @@ def homepage_server(input, output, session):
         return render.DataGrid(df_modified)
 
     @render_plotly
-    def scatterplot():
+
+    def barplot():
         color = input.scatter_color()
         data = dataset_data()
         if data.empty:
-            print("No data available for scatterplot")  # Debugging print
+            print("No data available for bar plot")  # Debugging print
             return go.Figure()  # Return an empty figure
+        
+        # Filter and preprocess the data
         filtered_data = data[data["first_job_waiting_time"] >= 0]
         filtered_data['first_job_waiting_time'] = (filtered_data['first_job_waiting_time'] / 60).round(2)
-        oneP = filtered_data[data["job_type"] == "1-p"]
-        GPU = filtered_data[data["job_type"] == "GPU"]
+        
+        # Separate job types
+        oneP = filtered_data[filtered_data["job_type"] == "1-p"]
+        GPU = filtered_data[filtered_data["job_type"].isin(["GPU > 1", "GPU = 1"])]
+        GPU["job_type"] = "GPU"
         MPI = filtered_data[filtered_data["job_type"].isin(
             ["MPI job a", "MPI job budge", "MPI job as", "MPI job z", "MPI job 4"]
         )]
-        MPI["job_type"] = "MPI" 
-        OMP = filtered_data[data["job_type"] == "omp"]
-        # Group the filtered data by 'job_type' and sum the 'first_job_waiting_time'
+        MPI["job_type"] = "MPI"
+        OMP = filtered_data[filtered_data["job_type"] == "omp"]
+        
+        # Concatenate and group data
         grouped_data = pd.concat([oneP, GPU, MPI, OMP])
         grouped_data = grouped_data.groupby("job_type")["first_job_waiting_time"].median().reset_index()
-        fig = px.scatter(
+
+        # Create a bar plot
+        fig = px.bar(
             grouped_data,
-            x="first_job_waiting_time",
-            y="job_type",
+            x="job_type",
+            y="first_job_waiting_time",
             color=None if color == "none" else color,
-            trendline="lowess",
             labels={
-                "first_job_waiting_time": "Median Waiting Time(min)",
+                "first_job_waiting_time": "Median Waiting Time (min)",
                 "job_type": "Job Type"
-            }
+            },
+            text_auto='.1f'  # Automatically show values on top of bars
         )
-        for index, row in grouped_data.iterrows():
-            fig.add_annotation(
-                x=row["first_job_waiting_time"],
-                y=row["job_type"],
-                text=f"{row['first_job_waiting_time']}",
-                showarrow=False,
-                yshift=10,
-                font=dict(color="Red")
-            )
 
         return fig
+
 
     @render_plotly
     def job_waiting_time_by_month():
@@ -310,7 +340,6 @@ def homepage_server(input, output, session):
             marker=dict(
                 size=6,  # Adjust marker size
                 opacity=0.7,  # Adjust marker opacity
-                color='blue',  # Set point color to a contrasting color (e.g., black)
                 line=dict(width=1, color='white')  # Add a white outline for further contrast
             ),
             boxpoints='all',  # Show all points
@@ -371,4 +400,7 @@ def homepage_server(input, output, session):
     @reactive.event(input.unselect_all)
     def _():
         ui.update_checkbox_group("job_type", selected=[])
+
+
+
 
