@@ -34,29 +34,23 @@ ICONS = {
     "count": fa.icon_svg("list"),
 }
 
-def format_time_range(value_range):
-    """Helper function to format time in appropriate units."""
-    min_time, max_time = value_range
-    if max_time >= 3600:   
-        return (int(min_time / 3600), int(max_time / 3600)), "Hours"
-    elif max_time >= 60:   
-        return (int(min_time / 60), int(max_time / 60)), "Minutes"
-    else:   
-        return (int(min_time), int(max_time)), "Seconds"
+# def format_time_range(value_range):
+#     """Helper function to format time in appropriate units."""
+#     min_time, max_time = value_range
+#     if max_time >= 3600:   
+#         return (int(min_time / 3600), int(max_time / 3600)), "Hours"
+#     elif max_time >= 60:   
+#         return (int(min_time / 60), int(max_time / 60)), "Minutes"
+#     else:   
+#         return (int(min_time), int(max_time)), "Seconds"
         
-formatted_range, unit_label = format_time_range(bill_rng)
+# formatted_range, unit_label = format_time_range(bill_rng)
 
 # UI for the homepage
 def homepage_ui():
     return ui.page_sidebar(
         ui.sidebar(
-            ui.input_slider(
-                "first_job_waiting_time",
-                f"Waiting Time ({unit_label})",  # Add dynamic unit label
-                min=max(0, formatted_range[0]),  # Ensure minimum is >= 0
-                max=formatted_range[1],
-                value=(max(0, formatted_range[0]), formatted_range[1]),
-            ),
+            ui.output_ui("dynamic_slider"),  # Dynamically render slider
             ui.input_checkbox_group(
                 "job_type",
                 "Job Type",
@@ -144,6 +138,37 @@ def homepage_ui():
 # Server logic for the homepage
 def homepage_server(input, output, session):
     print("Homepage server function called")
+
+    @reactive.calc
+    def filtered_dataset():
+        """Filter dataset based on selected years."""
+        years = list(map(int, input.years()))
+        return dataset[dataset.year.isin(years)]
+
+    @reactive.calc
+    def formatted_range():
+        """Calculate and format the range for the slider."""
+        filtered_data = filtered_dataset()
+        min_time, max_time = filtered_data.first_job_waiting_time.min(), filtered_data.first_job_waiting_time.max()
+        if max_time >= 3600:   
+            return (int(min_time / 3600), int(max_time / 3600)+1), "Hours"
+        elif max_time >= 60:   
+            return (int(min_time / 60), int(max_time / 60)+1), "Minutes"
+        else:   
+            return (int(min_time), int(max_time)+1), "Seconds"
+
+    @output
+    @render.ui
+    def dynamic_slider():
+        """Dynamically render the slider UI."""
+        range_values, unit_label = formatted_range()
+        return ui.input_slider(
+            "first_job_waiting_time",
+            f"Waiting Time ({unit_label})",
+            min=max(0, range_values[0]),  # Ensure minimum is >= 0
+            max=range_values[1],
+            value=(max(0, range_values[0]), range_values[1]),
+        )
 
     @reactive.calc
     def dataset_data():
