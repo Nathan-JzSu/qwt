@@ -42,10 +42,10 @@ def determine_job_type(row):
         return 'removed'
     elif row['options'] and 'gpus=' in row['options']:
         return 'GPU'
-    elif qname is not None and qname in ['u','z', '4', 'a', 'as', 'budge', 'a128']:
-        return 'MPI'
     elif row['slots'] == 1:
         return '1-p'
+    elif qname is not None and qname in ['u','z', '4', 'a', 'as', 'budge', 'a128']: # check granted_pe column: if contain mpi128 or similar message to clarify qname
+        return 'MPI'
     else:
         return 'omp'
     
