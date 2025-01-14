@@ -5,6 +5,7 @@ from mpi_job import mpi_job_ui, mpi_job_server
 from omp_job import omp_job_ui, omp_job_server
 from onep_job import oneP_job_ui, oneP_job_server 
 
+
 # Import additional page logic if needed (e.g., GPU Job, MPI Job)
 # from gpu_job import gpu_job_ui, gpu_job_server
 
@@ -30,8 +31,7 @@ def server(input, output, session):
 
     @reactive.effect
     def update_page():
-        selected_page = input.selected_navset_bar()
-        current_page.set(selected_page)
+        current_page.set(input.selected_navset_bar())
 
     # Dynamically render UI based on the current page
     @output
