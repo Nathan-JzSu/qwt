@@ -20,11 +20,15 @@ dataset.dropna(inplace=True)
 dataset['year'] = dataset['year'].astype(int)
 
 # Set the month column to a categorical with a fixed order
-month_order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-dataset['month'] = pd.Categorical(dataset['month'], 
-                                  categories=month_order, 
-                                  ordered=True)
+month_order = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+]
+dataset["month"] = pd.Categorical(
+    dataset["month"], 
+    categories=month_order, 
+    ordered=True
+)
 
 # Identify the CPU cores (slots) used by OMP jobs
 cpus = sorted(dataset[dataset.job_type == 'omp'].slots.unique().tolist())
@@ -410,7 +414,7 @@ def omp_job_server(input, output, session):
         data['job_waiting_time (hours)'] = data['first_job_waiting_time'] / 3600
         data['cpu_group'] = data['slots'].apply(label_cpu_group)
 
-        # Ensure consistent month order
+        # Ensure consistent month order (this is the critical step)
         data['month'] = pd.Categorical(data['month'], categories=month_order, ordered=True)
 
         # Create box plot with facets by CPU group
@@ -433,7 +437,11 @@ def omp_job_server(input, output, session):
             if "text" in annotation and annotation["text"].startswith("CPU Group="):
                 annotation["text"] = annotation["text"].replace("CPU Group=", "")
 
+        # Ensure x-axis (month) follows the correct order
+        fig.update_xaxes(categoryorder="array", categoryarray=month_order)
+
         return fig
+
 
 
     # -------------------- Reactive Effects & Event Handling --------------------
