@@ -203,7 +203,7 @@ def oneP_job_server(input, output, session):
         if df.empty:
             return go.Figure()
 
-        df_plot = df.copy()
+        df_plot = df[df["first_job_waiting_time"] >= 0]
         df_plot["waiting_time_hours"] = df_plot["first_job_waiting_time"] / 3600
 
         fig = px.box(
