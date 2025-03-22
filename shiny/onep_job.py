@@ -69,10 +69,10 @@ def oneP_job_ui():
         ui.layout_columns(
             ui.card(
                 ui.card_header(
-                    "Waiting Time vs Job Type",
+                    "Waiting Time vs Queue",
                     class_="d-flex justify-content-between align-items-center"
                 ),
-                output_widget("waiting_time_vs_job_type"),
+                output_widget("waiting_time_vs_queue"),
                 full_screen=True
             ),
             ui.card(
@@ -163,7 +163,7 @@ def oneP_job_server(input, output, session):
         return str(stats["count"])
 
     @render_plotly
-    def waiting_time_vs_job_type():
+    def waiting_time_vs_queue():
         """
         Bar plot of median waiting time by job type.
         """
@@ -173,14 +173,9 @@ def oneP_job_server(input, output, session):
 
         df_plot = df.copy()
         df_plot["job_type"] = df_plot["job_type"].str.replace("1-p ", "", regex=False)
-        df_plot["waiting_time_hours"] = df_plot["first_job_waiting_time"] / 3600
+        df_plot["waiting_time_hours"] = df_plot["first_job_waiting_time"] / 60
 
         grouped = df_plot.groupby("job_type")["waiting_time_hours"].median().reset_index()
-
-        # Group job types with median waiting time < 2 together
-        grouped["job_type"] = grouped.apply(
-            lambda row: "Others (<1 hrs)" if row["waiting_time_hours"] < 1 else row["job_type"], axis=1
-        )
 
         grouped = grouped.groupby("job_type")["waiting_time_hours"].median().reset_index()
         grouped = grouped.sort_values(by="waiting_time_hours", ascending=True)
@@ -189,8 +184,8 @@ def oneP_job_server(input, output, session):
             grouped,
             x="job_type",
             y="waiting_time_hours",
-            labels={"waiting_time_hours": "Median Waiting Time (hours)", "job_type": "Job Type"},
-            title="Median Waiting Time by Job Type"
+            labels={"waiting_time_hours": "Median Waiting Time (Min)", "job_type": "Job Type"},
+            title="Median Waiting Time By Queue"
         )
         return fig
 

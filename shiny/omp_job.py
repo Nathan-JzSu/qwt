@@ -6,9 +6,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 
-# -------------------------------------------------------------------------
-# DATA LOADING & PREPROCESSING
-# -------------------------------------------------------------------------
 
 # Load data from Feather
 dataset = pd.read_feather("/projectnb/rcs-intern/Jiazheng/accounting/ShinyApp_Data_OMP.feather")
@@ -244,34 +241,6 @@ def omp_job_server(input, output, session):
         filtered_data = dataset[idx_years & idx_months & idx_cpus]
         return filtered_data
 
-    # -------------------- Render: Data Table --------------------
-    # @output
-    # @render.data_frame
-    # def displayTable():
-    #     """
-    #     Display a filtered subset of the main dataset.
-    #     Waiting time is shown in minutes (numeric), but as a string for user readability.
-    #     Sorted by job_number for clarity.
-    #     """
-    #     data = dataset_data().copy()
-    #     # Convert waiting time to minutes (string-based representation)
-    #     data['first_job_waiting_time'] = data['first_job_waiting_time'].apply(
-    #         lambda x: f"{x / 60:.1f}"  # e.g. "123.4"
-    #     )
-    #     # Sort by job_number
-    #     data.sort_values(by='job_number', ascending=True, inplace=True)
-    #     # Rename columns for display
-    #     data_renamed = data.rename(
-    #         columns={
-    #             'job_type': 'Job Type',
-    #             'first_job_waiting_time': 'Waiting Time (min)',
-    #             'month': 'Month',
-    #             'job_number': 'Job Number',
-    #             'year': 'Year',
-    #             'slots': 'CPU Cores'
-    #         }
-    #     )
-    #     return data_renamed
 
     # -------------------- Value Boxes: Summary Stats --------------------
 
@@ -349,8 +318,7 @@ def omp_job_server(input, output, session):
     @render_plotly
     def barplot():
         """
-        Create a bar plot showing median waiting time (minutes)
-        by CPU group for the filtered dataset.
+        Create a bar plot showing median waiting time (minutes) by CPU group for the filtered dataset.
         """
         data = dataset_data().copy()
         if data.empty:
@@ -457,11 +425,6 @@ def omp_job_server(input, output, session):
     @reactive.effect
     @reactive.event(input.select_all)
     def _():
-        """
-        Example effect: If there's a 'select_all' checkbox or button
-        for job_type, it updates the job_type selections to only OMP jobs.
-        (Currently not used, but kept for reference.)
-        """
         omp_jobs = [job for job in dataset.job_type.unique() if "OMP" in job]
         ui.update_checkbox_group("job_type", selected=omp_jobs)
 
@@ -469,8 +432,7 @@ def omp_job_server(input, output, session):
     @reactive.event(input.unselect_all)
     def _():
         """
-        Example effect: Unselect all job_type checkboxes if needed.
-        (Currently not used, but kept for reference.)
+        Unselect all job_type checkboxes
         """
         ui.update_checkbox_group("job_type", selected=[])
 
@@ -479,8 +441,7 @@ def omp_job_server(input, output, session):
     def _():
         """
         This effect triggers whenever 'cpus' selection changes.
-        You can insert additional logic if you need to react
-        to CPU selection changes (e.g., additional UI updates).
+        to CPU selection changes
         """
         selected_cpus = input.cpus()
         filtered_jobs = dataset[dataset['slots'].isin(get_expanded_cpu_selection(selected_cpus))]

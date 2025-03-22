@@ -5,12 +5,26 @@ from shinywidgets import output_widget, render_plotly
 import plotly.express as px
 import plotly.graph_objects as go
 
-# --------------------------------------------------------------------
-# DATA LOADING & GLOBAL PREP
-# --------------------------------------------------------------------
 
 # Load data
 dataset = pd.read_feather("/projectnb/rcs-intern/Jiazheng/accounting/ShinyApp_Data.feather")
+# Simplify job types for nicer grouping
+dataset = dataset.copy()
+
+# Define a mapping for job type simplification based on prefixes
+job_type_mapping = {
+    "1-p": "1-P",  # Map job types starting with "1-p" to "1-P"
+    "GPU": "GPU",  # Map job types starting with "GPU" to "GPU"
+    "MPI": "MPI",  # Map job types starting with "MPI" to "MPI"
+    "OMP": "OMP"   # Map job types starting with "OMP" to "OMP"
+}
+
+# Apply the mapping using a lambda function
+dataset["job_type"] = dataset["job_type"].apply(
+    lambda x: next((v for k, v in job_type_mapping.items() if str(x).startswith(k)), x))
+
+# Handle empty strings (e.g., "   " becomes NaN):
+dataset["job_type"] = dataset["job_type"].replace("", pd.NA)
 
 # Ensure 'year' is integer
 dataset["year"] = dataset["year"].astype(int)
@@ -42,7 +56,7 @@ ICONS = {
 }
 
 # --------------------------------------------------------------------
-# UI DEFINITION
+# UI 
 # --------------------------------------------------------------------
 
 def homepage_ui():
@@ -92,12 +106,6 @@ def homepage_ui():
             fill=False,
         ),
         ui.layout_columns(
-            # Data table card (if desired, uncomment later)
-            # ui.card(
-            #     ui.card_header("Dataset Data"),
-            #     ui.output_data_frame("displayTable"),
-            #     full_screen=True
-            # ),
             ui.card(
                 ui.card_header(
                     "Waiting Time vs Job Type",
@@ -321,33 +329,7 @@ def homepage_server(input, output, session):
         stats = waiting_time_stats()
         return str(stats["count"])
 
-    # ----------------------------------------------------------------
-    # Main data table (if you want to show it, uncomment)
-    # ----------------------------------------------------------------
-    # @output
-    # @render.data_frame
-    # def displayTable():
-    #     """
-    #     Display the filtered data in a table, with waiting time shown in minutes.
-    #     """
-    #     data = dataset_data().copy()
-    #     # Convert to minutes for display
-    #     data["first_job_waiting_time"] = (data["first_job_waiting_time"] / 60).round(1)
-    #     # Sort by job_number
-    #     data.sort_values(by="job_number", ascending=True, inplace=True)
-    #     # Rename columns for user-friendly display
-    #     data_renamed = data.rename(
-    #         columns={
-    #             "job_type": "Job Type",
-    #             "first_job_waiting_time": "Waiting Time (min)",
-    #             "month": "Month",
-    #             "job_number": "Job Number",
-    #             "year": "Year",
-    #             "slots": "CPU Cores",
-    #         }
-    #     )
-    #     return data_renamed
-
+    
     # ----------------------------------------------------------------
     # PLOTS
     # ----------------------------------------------------------------
@@ -366,14 +348,8 @@ def homepage_server(input, output, session):
         color_option = input.scatter_color()
 
         # Convert waiting time to minutes
-        df = data.copy()
+        df = data
         df["first_job_waiting_time"] = (df["first_job_waiting_time"] / 60).round(2)
-
-        # Simplify job types for nicer grouping
-        df.loc[df["job_type"].str.contains("1-p", na=False), "job_type"] = "1-P"
-        df.loc[df["job_type"].isin(["GPU > 1", "GPU = 1"]), "job_type"] = "GPU"
-        df.loc[df["job_type"].str.contains("MPI", na=False), "job_type"] = "MPI"
-        df.loc[df["job_type"].str.contains("OMP", na=False), "job_type"] = "OMP"
 
         # Calculate medians
         medians = (
@@ -392,8 +368,11 @@ def homepage_server(input, output, session):
                 "first_job_waiting_time": "Median Waiting Time (min)",
                 "job_type": "Job Type",
             },
-            text_auto=".1f"
+            text=medians["first_job_waiting_time"].apply(lambda x: f"{x:.1f}" if x != 0 else "0")  # Explicitly set text if the value is 0x
         )
+
+        # Adjust text position and appearance
+        fig.update_traces(textposition='outside', textfont_size=12)
 
         return fig
 
@@ -491,21 +470,15 @@ def homepage_server(input, output, session):
         return fig
 
     # ----------------------------------------------------------------
-    # "Select All" & "Unselect All" event handlers
+    # "Select All" & "Unselect All" handlers
     # ----------------------------------------------------------------
     @reactive.effect
     @reactive.event(input.select_all)
     def _():
-        """
-        Select all job types when the user clicks 'Select All'.
-        """
         all_job_types = list(dataset["job_type"].unique())
         ui.update_checkbox_group("job_type", selected=all_job_types)
 
     @reactive.effect
     @reactive.event(input.unselect_all)
     def _():
-        """
-        Unselect all job types when the user clicks 'Unselect All'.
-        """
         ui.update_checkbox_group("job_type", selected=[])
