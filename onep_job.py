@@ -4,11 +4,13 @@ from shiny import ui, render, reactive
 from shinywidgets import output_widget, render_plotly
 import plotly.express as px
 import plotly.graph_objects as go
+import datetime
 
 # ---------------------------------------
 # DATA LOADING
 # ---------------------------------------
 dataset = pd.read_feather("/projectnb/rcs-intern/Jiazheng/accounting/ShinyApp_Data_OneP.feather")
+now = datetime.datetime.now()
 
 # Ensure 'year' is integer
 # Optional: Remove rows with NaN values if needed
@@ -51,12 +53,40 @@ def oneP_job_ui():
     UI for the 1-p Job page.
     """
     return ui.page_fluid(
-        ui.input_checkbox_group(
-            "years",
-            "Select Year(s)",
-            list(range(2013, 2026)),
-            selected=[2024],
-            inline=True
+        ui.output_ui("onep_warning_message"),
+        ui.div(
+            ui.div(
+                ui.input_text(
+                    "selected_year_onep",
+                    "Enter Year",
+                    value=str(now.year),
+                    placeholder="e.g., 2024"
+                ),
+                style="margin-right: 20px; width: 250px;"
+            ),
+            ui.div(
+                ui.input_text(
+                    "selected_month_onep",
+                    "Enter Month (e.g., Jan, Feb)",
+                    value=now.strftime("%b"),
+                    placeholder="e.g., Jan"
+                ),
+                style="margin-right: 20px; width: 250px;"
+            ),
+            ui.div(
+                ui.input_select(
+                    "queue_filter_onep",
+                    "Queue Type",
+                    choices={
+                        "all": "All",
+                        "shared": "Shared Nodes Only",
+                        "buyin": "Buyin Nodes Only"
+                    },
+                    selected="all"
+                ),
+                style="width: 250px;"
+            ),
+            style="display: flex; align-items: flex-end; margin-bottom: 1em; margin-top: 1em;"
         ),
         ui.layout_columns(
             ui.value_box("Min Waiting Time", ui.output_text("min_waiting_time"), showcase=ICONS["min"]),
@@ -99,12 +129,27 @@ def oneP_job_server(input, output, session):
     @reactive.Calc
     def oneP_filtered_data():
         """
-        Filter the dataset to the selected years and job type '1-p'.
+        Filter dataset by selected year, month, and queue type.
         """
-        years = list(map(int, input.years()))
-        if not years:
+        try:
+            year = int(input.selected_year_onep())
+        except ValueError:
             return dataset.iloc[0:0]
-        return dataset[dataset["year"].isin(years)]
+
+        month = input.selected_month_onep().capitalize()
+        if month not in month_order:
+            return dataset.iloc[0:0]
+
+        df = dataset[(dataset["year"] == year) & (dataset["month"] == month)]
+
+        queue_filter = input.queue_filter_onep()
+        if queue_filter == "shared":
+            df = df[df["queue_type"] == "shared"]
+        elif queue_filter == "buyin":
+            df = df[df["queue_type"] == "buyin"]
+
+        return df
+
 
     @reactive.Calc
     def waiting_time_stats():
@@ -211,3 +256,20 @@ def oneP_job_server(input, output, session):
             labels={"waiting_time_hours": "Waiting Time (hours)", "month": "Month"}
         )
         return fig
+
+    @output
+    @render.ui
+    def onep_warning_message():
+        try:
+            year = int(input.selected_year_onep())
+            month = input.selected_month_onep().capitalize()
+        except:
+            return ui.markdown("⚠️ Invalid year or month input.")
+
+        if month not in month_order:
+            return ui.markdown("⚠️ Invalid month format. Use 3-letter month (e.g., Jan, Feb).")
+
+        if dataset[(dataset["year"] == year) & (dataset["month"] == month)].empty:
+            return ui.markdown("⚠️ No data available for this year and month.")
+
+        return None

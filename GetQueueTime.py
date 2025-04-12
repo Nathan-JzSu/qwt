@@ -47,6 +47,7 @@ def waiting_time_per_job_type(input_file_name, output_file_name, year):
         # Only process jobs from the specified year
         if initialYear == year:
             month = datetime.datetime.fromtimestamp(submission_time).strftime('%b')
+            day = datetime.datetime.fromtimestamp(submission_time).day  # Extract 1–31
 
             # Initialize the latest end time for this (owner, job_type) if not already set
             if (owner, job_type) not in latest_end_times:
@@ -74,6 +75,7 @@ def waiting_time_per_job_type(input_file_name, output_file_name, year):
                         current_waiting_time,
                         month,
                         year,
+                        day,
                         row['job_number'],
                         row['slots']
                     ])
@@ -82,7 +84,7 @@ def waiting_time_per_job_type(input_file_name, output_file_name, year):
             latest_end_times[(owner, job_type)] = max(end_time, latest_end_times[(owner, job_type)])
 
     # Convert the results to a DataFrame
-    job_type_waiting_df = pd.DataFrame(job_type_waiting_times, columns=['job_type', 'queue_type', 'first_job_waiting_time', 'month', 'year', 'job_number', 'slots'])
+    job_type_waiting_df = pd.DataFrame(job_type_waiting_times, columns=['job_type', 'queue_type', 'first_job_waiting_time', 'month', 'year', 'day', 'job_number', 'slots'])
 
     # Save the results to a CSV file
     job_type_waiting_df.to_csv(output_file_name, index=False, chunksize=100000)

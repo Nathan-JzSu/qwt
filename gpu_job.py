@@ -4,7 +4,8 @@ from shiny import ui, render, reactive
 from shinywidgets import output_widget, render_plotly
 import plotly.express as px
 import plotly.graph_objects as go  # For empty Figure
-
+import datetime
+now = datetime.datetime.now()
 # --------------------------------------------------------------------
 # DATA LOADING & PREP
 # --------------------------------------------------------------------
@@ -50,14 +51,41 @@ ICONS = {
 def gpu_job_ui():
     return ui.page_fluid(
         # ------------------ Year Selection ------------------
-        ui.input_checkbox_group(
-            "years",
-            "Select Year(s)",
-            list(range(2013, 2026)),  # 2013–2025
-            selected=[2024],
-            inline=True
+        ui.output_ui("gpu_warning_message"),
+        ui.div(
+            ui.div(
+                ui.input_text(
+                    "selected_year_gpu",
+                    "Enter Year",
+                    value=str(now.year),
+                    placeholder="e.g., 2024"
+                ),
+                style="margin-right: 20px; width: 250px;"
+            ),
+            ui.div(
+                ui.input_text(
+                    "selected_month_gpu",
+                    "Enter Month (e.g., Jan, Feb)",
+                    value=now.strftime("%b"),
+                    placeholder="e.g., Jan"
+                ),
+                style="margin-right: 20px; width: 250px;"
+            ),
+            ui.div(
+                ui.input_select(
+                    "queue_filter_gpu",
+                    "Queue Type",
+                    choices={
+                        "all": "All",
+                        "shared": "Shared Nodes Only",
+                        "buyin": "Buyin Nodes Only"
+                    },
+                    selected="all"
+                ),
+                style="width: 250px;"
+            ),
+            style="display: flex; align-items: flex-end; margin-bottom: 1em; margin-top: 1em;"
         ),
-
         # ------------------ Value Boxes ---------------------
         ui.layout_columns(
             ui.value_box(
@@ -96,7 +124,7 @@ def gpu_job_ui():
                     ),
                     class_="d-flex justify-content-between align-items-center",
                 ),
-                output_widget("barplot"),
+                output_widget("GPU_barplot"),
                 full_screen=True
             ),
             ui.card(
@@ -135,15 +163,24 @@ def gpu_job_server(input, output, session):
     # ------------------ Reactive Filter ------------------
     @reactive.Calc
     def gpu_data():
-        """
-        Filter the global 'dataset' based on selected years.
-        """
-        selected_years = list(map(int, input.years()))
-        if not selected_years:
-            return dataset.iloc[0:0]  # Return empty if no years selected
+        try:
+            year = int(input.selected_year_gpu())
+        except ValueError:
+            return dataset.iloc[0:0]
 
-        df_filtered = dataset[dataset["year"].isin(selected_years)]
-        return df_filtered
+        month = input.selected_month_gpu().capitalize()
+        if month not in month_order:
+            return dataset.iloc[0:0]
+
+        df = dataset[(dataset["year"] == year) & (dataset["month"] == month)]
+
+        queue_filter = input.queue_filter_gpu()
+        if queue_filter == "shared":
+            df = df[df["queue_type"] == "shared"]
+        elif queue_filter == "buyin":
+            df = df[df["queue_type"] == "buyin"]
+
+        return df
 
     # ------------------ Summary Stats ------------------
     @reactive.Calc
@@ -209,7 +246,7 @@ def gpu_job_server(input, output, session):
     # ------------------ Plots ------------------
 
     @render_plotly
-    def barplot():
+    def GPU_barplot():
         """
         Bar plot of median waiting time (minutes) by job_type.
         Optional color variable from radio buttons: job_type or none.
@@ -355,3 +392,22 @@ def gpu_job_server(input, output, session):
         )
 
         return fig
+
+    @output
+    @render.ui
+    def gpu_warning_message():
+        try:
+            year = int(input.selected_year_gpu())
+            month = input.selected_month_gpu().capitalize()
+        except:
+            return ui.markdown("⚠️ Invalid year/month input.")
+
+        if month not in month_order:
+            return ui.markdown("⚠️ Invalid month format. Use 3-letter month (e.g., Jan, Feb).")
+
+        if dataset[(dataset["year"] == year) & (dataset["month"] == month)].empty:
+            return ui.markdown("⚠️ No data available for this year and month.")
+
+        return None
+
+

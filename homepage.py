@@ -190,15 +190,15 @@ def homepage_ui():
                     ),
                     class_="d-flex justify-content-between align-items-center",
                 ),
-                output_widget("barplot"),
+                output_widget("all_jobs_barplot"),
                 full_screen=True
             ),
             ui.card(
                 ui.card_header(
-                    "Box Plot of Job Waiting Time by Month & Year",
+                    "Box Plot of Job Waiting Time by Date",
                     class_="d-flex justify-content-between align-items-center"
                 ),
-                output_widget("job_waiting_time_by_month"),
+                output_widget("job_waiting_time_by_date"),
                 full_screen=True
             ),
             col_widths=[6, 6]
@@ -407,7 +407,7 @@ def homepage_server(input, output, session):
 
     # 1) Bar plot
     @render_plotly
-    def barplot():
+    def all_jobs_barplot():
         """
         Median waiting time (minutes) by job type, with optional coloring.
         """
@@ -448,51 +448,47 @@ def homepage_server(input, output, session):
         return fig
 
     @render_plotly
-    def job_waiting_time_by_month():
+    def job_waiting_time_by_date():
         """
-        Box plot of waiting time (in hours) by month, colored by year.
-        Limit the number of points displayed to at most 2000 for performance and clarity.
+        Box plot of waiting time (in hours) by submission date (1–31), colored by year.
+        Limits to 2000 points for performance.
         """
         data = dataset_data()
         if data.empty:
             return go.Figure()
 
         df = data.copy()
+
+        # Ensure we have a 'submit_date' column as datetime
+        if "submit_date" not in df.columns:
+            return go.Figure()  # Or raise an error
+
+        df["submit_date"] = pd.to_datetime(df["submit_date"])
+        df["day"] = df["submit_date"].dt.day  # Extract 1–31
         df["job_waiting_time_hours"] = df["first_job_waiting_time"] / 3600.0
 
-        # Define the maximum number of points to display
+        # Downsample if needed
         max_points = 2000
-
         if len(df) > max_points:
-            # Group data by month and year and aggregate similar points
-            grouped = (
-                df.groupby(["month", "year"])
-                .apply(lambda g: g.sample(n=min(len(g), max_points // len(df["month"].unique())), random_state=42))
-                .reset_index(drop=True)
-            )
+            df = df.sample(n=max_points, random_state=42)
 
-            # Add outliers back to the dataset
-            outliers = df[
-                (df["job_waiting_time_hours"] < df["job_waiting_time_hours"].quantile(0.05)) |
-                (df["job_waiting_time_hours"] > df["job_waiting_time_hours"].quantile(0.95))
-            ]
-            df = pd.concat([grouped, outliers]).drop_duplicates().reset_index(drop=True)
-
+        # Plot by day of the month
         fig = px.box(
             df,
-            x="month",
+            x="day",
             y="job_waiting_time_hours",
             color="year",
-            labels={"job_waiting_time_hours": "Job Waiting Time (hours)"},
+            labels={
+                "day": "Day of Month",
+                "job_waiting_time_hours": "Job Waiting Time (hours)"
+            },
+            category_orders={"day": list(range(1, 32))}
         )
 
-        # Ensure the correct month order in x-axis
-        fig.update_xaxes(categoryorder="array", categoryarray=month_order)
-
-        # Layout adjustments
         fig.update_layout(
             boxmode="group",
-            showlegend=True
+            showlegend=True,
+            xaxis=dict(tickmode="linear", dtick=1)
         )
 
         return fig
