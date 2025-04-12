@@ -4,6 +4,7 @@ from shiny import ui, render, reactive
 from shinywidgets import output_widget, render_plotly
 import plotly.express as px
 import plotly.graph_objects as go
+import datetime
 
 
 # Load data
@@ -58,6 +59,24 @@ ICONS = {
 # --------------------------------------------------------------------
 # UI 
 # --------------------------------------------------------------------
+now = datetime.datetime.now()
+
+# custom value box to display icon (title output_id) horizontally
+def value_box_custom(title, output_id, icon):
+    return ui.value_box(
+        "",
+        ui.div(
+            ui.div(
+                ui.div(icon, class_="value-box-showcase custom-icon"),
+                ui.div(
+                    ui.div(title, class_="value-box-title"),
+                    ui.div(ui.output_text(output_id), class_="value-box-value"),
+                    class_="custom-text"
+                ),
+                class_="d-flex align-items-center gap-2"
+            )
+        )
+    )
 
 def homepage_ui():
     """
@@ -80,29 +99,78 @@ def homepage_ui():
             ui.input_action_button("unselect_all", "Unselect All"),
             open="desktop",
         ),
-        ui.input_checkbox_group(
-            "years",  
-            "Select Year(s)",
-            list(range(2013, 2026)),  # Extend from 2013 to 2025
-            selected=[2024],          # Default selection
-            inline=True
+        ui.output_ui("warning_message"),
+        ui.div(  # <== this replaces the layout_columns for inputs
+            ui.div(
+                ui.input_text(
+                    "selected_year",
+                    "Enter Year",
+                    value=str(now.year),
+                    placeholder="e.g., 2024"
+                ),
+                style="margin-right: 20px; width: 250px;"
+            ),
+            ui.div(
+                ui.input_text(
+                    "selected_month",
+                    "Enter Month (e.g., Jan, Feb)",
+                    value=now.strftime("%b"),
+                    placeholder="e.g., Jan"
+                ),
+                style="margin-right: 20px; width: 250px;"
+            ),
+            ui.div(
+                ui.input_select(
+                    "queue_filter",
+                    "Queue Type",
+                    choices={
+                        "all": "All",
+                        "shared": "Shared Nodes Only",
+                        "buyin": "Buyin Nodes Only"
+                    },
+                    selected="all"
+                ),
+                style="width: 250px;"
+            ),
+            style="display: flex; align-items: flex-end; margin-bottom: 1em;"
         ),
+        ui.tags.style("""
+            .custom-icon {
+                align-items: center;
+                justify-content: center;
+            }
+
+            .custom-text {
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .bslib-value-box .value-box-title {
+                margin-top: 0;
+                margin-bottom: 0rem;
+            }
+            .bslib-value-box .value-box-value {
+                margin-bottom: 0rem;
+            }
+
+            .bslib-value-box .value-box-showcase,
+            .bslib-value-box .value-box-showcase > .html-fill-item {
+                width: unset !important;
+                padding: 0rem;
+            }
+            
+            .bslib-value-box .value-box-area {
+                padding: 0 !important;
+            }
+        """),
         ui.layout_columns(
-            ui.value_box(
-                "Min Waiting Time", ui.output_text("min_waiting_time"), showcase=ICONS["min"]
-            ),
-            ui.value_box(
-                "Max Waiting Time", ui.output_text("max_waiting_time"), showcase=ICONS["max"]
-            ),
-            ui.value_box(
-                "Mean Waiting Time", ui.output_text("mean_waiting_time"), showcase=ICONS["speed"]
-            ),
-            ui.value_box(
-                "Median Waiting Time", ui.output_text("median_waiting_time"), showcase=ICONS["median"]
-            ),
-            ui.value_box(
-                "Number of Jobs", ui.output_text("job_count"), showcase=ICONS["count"]
-            ),
+            value_box_custom("Min Waiting Time", "min_waiting_time", ICONS["min"]),
+            value_box_custom("Max Waiting Time", "max_waiting_time", ICONS["max"]),
+            value_box_custom("Mean Waiting Time", "mean_waiting_time", ICONS["speed"]),
+            value_box_custom("Median Waiting Time", "median_waiting_time", ICONS["median"]),
+            value_box_custom("Number of Jobs", "job_count", ICONS["count"]),
             fill=False,
         ),
         ui.layout_columns(
@@ -133,15 +201,7 @@ def homepage_ui():
                 output_widget("job_waiting_time_by_month"),
                 full_screen=True
             ),
-            ui.card(
-                ui.card_header(
-                    "3D Bubble Chart of Average Job Waiting Time by Year & Job Type",
-                    class_="d-flex justify-content-between align-items-center"
-                ),
-                output_widget("job_waiting_time_3d"),
-                full_screen=True
-            ),
-            col_widths=[6, 6, 6]
+            col_widths=[6, 6]
         ),
         fillable=True,
     )
@@ -164,15 +224,17 @@ def homepage_server(input, output, session):
     # ----------------------------------------------------------------
     @reactive.Calc
     def dataset_year_filtered():
-        """
-        Filter dataset by selected years for use in calculating the slider range.
-        """
-        years = list(map(int, input.years()))
-        if years:
-            df_years = dataset[dataset["year"].isin(years)]
-        else:
-            df_years = dataset.iloc[0:0]  # Empty
-        return df_years
+        # try:
+        #     year = int(input.selected_year())
+        # except ValueError:
+        #     year = now.year  # fallback to current year
+        # df_years = dataset[dataset["year"] == year]
+        # return df_years  # <- This was missing
+        year, month, warning = selected_year_month()
+        if warning or year is None:
+            return dataset.iloc[0:0]  # return empty DataFrame
+        return dataset[dataset["year"] == year]
+
 
     # ----------------------------------------------------------------
     # 2) Compute slider range based on the year-filtered dataset
@@ -214,8 +276,9 @@ def homepage_server(input, output, session):
         Dynamically render the slider UI based on the (range, unit).
         """
         (range_min, range_max), unit_label = formatted_range()
-        # Ensure non-negative min
-        range_min = max(range_min, 0)
+        # Prevent slider rendering if range is invalid
+        if range_max <= range_min:
+            return ui.markdown("⚠️ No data available to display slider.")
 
         return ui.input_slider(
             "first_job_waiting_time",
@@ -239,8 +302,10 @@ def homepage_server(input, output, session):
         """
         (range_min, range_max), unit_label = formatted_range()
         slider_min, slider_max = input.first_job_waiting_time()
-        years = list(map(int, input.years()))
-        job_types = input.job_type()
+
+        year, month, warning = selected_year_month()
+        if warning or year is None:
+            return dataset.iloc[0:0]
 
         # Convert slider values back to seconds
         if unit_label == "Hours":
@@ -249,17 +314,23 @@ def homepage_server(input, output, session):
         elif unit_label == "Minutes":
             min_sec = slider_min * 60
             max_sec = slider_max * 60
-        else:  # "Seconds"
+        else:
             min_sec = slider_min
             max_sec = slider_max
 
-        # Filter
-        df = dataset[dataset["year"].isin(years)]
+        job_types = input.job_type()
+
+        df = dataset[(dataset["year"] == year) & (dataset["month"] == month)]
         df = df[df["first_job_waiting_time"].between(min_sec, max_sec)]
         df = df[df["job_type"].isin(job_types)]
 
-        return df[["job_type", "first_job_waiting_time", "month", 
-                    "job_number", "year", "slots"]]
+        queue_filter = input.queue_filter()
+        if queue_filter == "shared":
+            df = df[df["queue_type"] == "shared"]
+        elif queue_filter == "buyin":
+            df = df[df["queue_type"] == "buyin"]
+
+        return df[["job_type", "first_job_waiting_time", "month", "job_number", "year", "slots"]]
 
     # ----------------------------------------------------------------
     # 5) Summary stats (min, max, mean, median, count)
@@ -427,47 +498,31 @@ def homepage_server(input, output, session):
         return fig
 
 
-    # 3) 3D bubble chart
-    @render_plotly
-    def job_waiting_time_3d():
-        """
-        3D scatter of average job waiting time (hours) by year, month, and job type.
-        Bubble size encodes waiting time as well.
-        """
-        data = dataset_data()
-        if data.empty:
-            return go.Figure()
+    @reactive.Calc
+    def selected_year_month():
+        try:
+            year = int(input.selected_year())
+        except ValueError:
+            year = now.year  # fallback if invalid
 
-        # Compute average waiting time by (year, month, job_type)
-        df = data.groupby(["year", "month", "job_type"])["first_job_waiting_time"].mean().reset_index()
-        df["waiting_time_hours"] = df["first_job_waiting_time"] / 3600.0
-        df["waiting_time_hours"].fillna(0, inplace=True)
+        month = input.selected_month().capitalize()
 
-        # Ensure correct month order
-        df["month"] = pd.Categorical(df["month"], categories=month_order, ordered=True)
+        # Check if the month is valid
+        if month not in month_order:
+            return None, None, "Invalid month format. Please use 3-letter month (e.g., Jan, Feb)."
 
-        fig = px.scatter_3d(
-            df,
-            x="month",
-            y="job_type",
-            z="waiting_time_hours",
-            size="waiting_time_hours",
-            color="month",
-            hover_data=["year", "job_type"],
-            labels={"waiting_time_hours": "Waiting Time (hours)"},
+        # Check for future data
+        latest_year = dataset["year"].max()
+        future_check = (
+            year > latest_year or
+            (year == latest_year and month_order.index(month) > dataset[dataset["year"] == year]["month"].cat.codes.max())
         )
-        fig.update_layout(
-            scene=dict(
-                xaxis=dict(
-                    tickmode="array",
-                    tickvals=list(range(len(month_order))),
-                    ticktext=month_order,
-                ),
-                zaxis=dict(title="Waiting Time (hours)"),
-            ),
-            scene_zaxis_type="linear",
-        )
-        return fig
+
+        if future_check:
+            return year, month, "No data available for this month."
+
+        return year, month, None
+
 
     # ----------------------------------------------------------------
     # "Select All" & "Unselect All" handlers
@@ -482,3 +537,11 @@ def homepage_server(input, output, session):
     @reactive.event(input.unselect_all)
     def _():
         ui.update_checkbox_group("job_type", selected=[])
+
+    @output
+    @render.ui
+    def warning_message():
+        _, _, warning = selected_year_month()
+        if warning:
+            return ui.markdown(f"**⚠️ Warning:** {warning}")
+        return None

@@ -21,7 +21,7 @@ for year in range(2013, current_year + 1):
 dataset = pd.concat(dataframes, ignore_index=True)
 
 # Remove 'buyin' rows
-dataset = dataset[dataset["queue_type"] != "buyin"].reset_index(drop=True)
+# dataset = dataset[dataset["queue_type"] != "buyin"].reset_index(drop=True)
 
 # Basic cleaning/conversions here so we don’t do them repeatedly:
 dataset["year"] = dataset["year"].astype(int, errors="ignore")
