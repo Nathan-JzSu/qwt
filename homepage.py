@@ -410,26 +410,26 @@ def homepage_server(input, output, session):
     def all_jobs_barplot():
         """
         Median waiting time (minutes) by job type, with optional coloring.
+        Adds extra Y-axis padding for text labels above bars.
         """
         data = dataset_data()
         if data.empty:
             return go.Figure()
 
-        # Handle color option
         color_option = input.scatter_color()
 
-        # Convert waiting time to minutes
-        df = data
+        # Convert to minutes
+        df = data.copy()
         df["first_job_waiting_time"] = (df["first_job_waiting_time"] / 60).round(2)
 
-        # Calculate medians
+        # Compute medians
         medians = (
             df.groupby("job_type")["first_job_waiting_time"]
             .median()
             .reset_index()
         )
 
-        # Create bar plot
+        # Create plot
         fig = px.bar(
             medians,
             x="job_type",
@@ -439,13 +439,19 @@ def homepage_server(input, output, session):
                 "first_job_waiting_time": "Median Waiting Time (min)",
                 "job_type": "Job Type",
             },
-            text=medians["first_job_waiting_time"].apply(lambda x: f"{x:.1f}" if x != 0 else "0")  # Explicitly set text if the value is 0x
+            text=medians["first_job_waiting_time"].apply(lambda x: f"{x:.1f}" if x != 0 else "0")
         )
 
-        # Adjust text position and appearance
+        # Adjust visuals
         fig.update_traces(textposition='outside', textfont_size=12)
 
+        # Add padding to Y-axis so text isn't cut off
+        fig.update_layout(
+            yaxis=dict(range=[0, medians["first_job_waiting_time"].max() * 1.15])
+        )
+
         return fig
+
 
     
     

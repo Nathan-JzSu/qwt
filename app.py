@@ -49,17 +49,24 @@ def server(input, output, session):
             return oneP_job_ui()
 
     # Dynamically call server logic based on the current page
+    # Store which server has already been initialized
+    initialized_pages = set()
+
     @reactive.effect
     def call_server():
-        if current_page.get() == "All Jobs":
-            homepage_server(input, output, session)
-        elif current_page.get() == "GPU Job":
-            gpu_job_server(input, output, session)
-        elif current_page.get() == "MPI Job":
-            mpi_job_server(input, output, session)
-        elif current_page.get() == "OMP Job":
-            omp_job_server(input, output, session)
-        elif current_page.get() == "1-p Job":
-            oneP_job_server(input, output, session)
+        page = current_page.get()
+        if page not in initialized_pages:
+            initialized_pages.add(page)
+            if page == "All Jobs":
+                homepage_server(input, output, session)
+            elif page == "GPU Job":
+                gpu_job_server(input, output, session)
+            elif page == "MPI Job":
+                mpi_job_server(input, output, session)
+            elif page == "OMP Job":
+                omp_job_server(input, output, session)
+            elif page == "1-p Job":
+                oneP_job_server(input, output, session)
+
 
 app = App(app_ui, server)
