@@ -160,7 +160,7 @@ def omp_job_ui():
             "cpus",
             "Select CPU Cores",
             list(cpu_ranges.keys()),  # use the keys of cpu_ranges
-            selected=cpus,            # initially select all available cpus
+            selected=list(cpu_ranges.keys()),            # initially select all available cpus
             inline=True
         ),
 
@@ -203,7 +203,7 @@ def omp_job_ui():
             # ),
             ui.card(
                 ui.card_header(
-                    "Waiting Time vs Job Type",
+                    "Median Waiting Time by CPU Group",
                     ui.popover(
                         ICONS["ellipsis"],
                         ui.input_radio_buttons(
@@ -217,20 +217,20 @@ def omp_job_ui():
                     ),
                     class_="d-flex justify-content-between align-items-center",
                 ),
-                output_widget("barplot"),  # Bar plot of median waiting time by CPU group
+                output_widget("omp_barplot"),  # Bar plot of median waiting time by CPU group
                 full_screen=True,
                 class_="mb-4" # add margin below 
             ),
             ui.card(
                 ui.card_header(
-                    "Box Plot of Job Waiting Time by Month & Year",
+                    "Daily Median Waiting Time",
                     class_="d-flex justify-content-between align-items-center"
                 ),
-                output_widget("job_waiting_time_by_month"),  # Box plot by month/year/cpu_group
+                output_widget("omp_job_waiting_time_by_day"),  # Box plot by month/year/cpu_group
                 full_screen=True,
                 class_="mb-4" # add margin below 
             ),
-            col_widths=[6, 6, 6]
+            col_widths=[6, 6]
         ),
         fillable=True,
     )
@@ -360,18 +360,19 @@ def omp_job_server(input, output, session):
 
     # -------------------- Plot: Bar Plot of Median Waiting Time by CPU Group --------------------
     @render_plotly
-    def barplot():
+    def omp_barplot():
         """
-        Create a bar plot showing median waiting time (minutes) by CPU group for the filtered dataset.
+        Create a bar plot showing median waiting time (min or hr) by CPU group for the filtered dataset.
+        Auto-switches to hours if any group exceeds 100 minutes.
         """
         data = dataset_data().copy()
         if data.empty:
             print("No data available for bar plot in OMP Job")
             return go.Figure()
 
-        # Convert from seconds to minutes
+        # Convert from seconds to minutes and filter out negatives
         data = data[data["first_job_waiting_time"] >= 0]
-        data['first_job_waiting_time'] = (data['first_job_waiting_time'] / 60).round(2)
+        data['first_job_waiting_time'] = data['first_job_waiting_time'] / 60  # Now in minutes
 
         # Create a CPU group column
         data['cpu_group'] = data['slots'].apply(label_cpu_group)
@@ -379,88 +380,103 @@ def omp_job_server(input, output, session):
         # Group by 'cpu_group' and compute median waiting time
         grouped = data.groupby("cpu_group")["first_job_waiting_time"].median().reset_index()
 
-        # Sort the groups to maintain the CPU range order
+        # Preserve order of CPU ranges
         group_order = list(cpu_ranges.keys())
-        grouped['cpu_group'] = pd.Categorical(grouped['cpu_group'],
-                                              categories=group_order,
-                                              ordered=True)
+        grouped['cpu_group'] = pd.Categorical(grouped['cpu_group'], categories=group_order, ordered=True)
         grouped.sort_values('cpu_group', inplace=True)
+
+        # Determine whether to switch to hours
+        convert_to_hours = grouped["first_job_waiting_time"].max() > 100
+        unit = "hr" if convert_to_hours else "min"
+        grouped["waiting_time_display"] = grouped["first_job_waiting_time"].apply(
+            lambda x: round(x / 60, 1) if convert_to_hours else round(x, 1)
+        )
+        y_values = grouped["waiting_time_display"]
 
         # Build the bar plot
         fig = px.bar(
             grouped,
             x="cpu_group",
-            y="first_job_waiting_time",
+            y=y_values,
             labels={
-                "first_job_waiting_time": "Median Waiting Time (min)",
-                "cpu_group": "CPU Groups"
+                "cpu_group": "CPU Groups",
+                "waiting_time_display": f"Median Waiting Time ({unit})"
             },
-            text_auto='.1f'
+            text=[f"{val} {unit}" for val in y_values]
         )
-        return fig
 
-    # -------------------- Plot: Box Plot of Job Waiting Time by Month & Year --------------------
-    @render_plotly
-    def job_waiting_time_by_month():
-        """
-        Create a box plot (facet by CPU group) showing job waiting time (hours)
-        by month, with a maximum of 10,000 data points distributed across selected years.
-        """
-        data = dataset_data().copy()
-        if data.empty:
-            print("No data available for Job Waiting Time by Month")
-            return go.Figure()
-
-        # Filter by selected years
-        selected_years = list(map(int, input.years()))
-        data = data[data['year'].isin(selected_years)]
-
-        # Limit the number of points per year
-        max_points = 10000
-        points_per_year = max_points // len(selected_years)
-
-        # Downsample each year
-        downsampled_data = []
-        for year in selected_years:
-            year_data = data[data['year'] == year]
-            if len(year_data) > points_per_year:
-                year_data = year_data.sample(n=points_per_year, random_state=42)
-            downsampled_data.append(year_data)
-
-        # Combine downsampled data
-        data = pd.concat(downsampled_data)
-
-        # Convert waiting time from seconds to hours
-        data['job_waiting_time (hours)'] = data['first_job_waiting_time'] / 3600
-        data['cpu_group'] = data['slots'].apply(label_cpu_group)
-
-        # Ensure consistent month order (this is the critical step)
-        data['month'] = pd.Categorical(data['month'], categories=month_order, ordered=True)
-
-        # Create box plot with facets by CPU group
-        fig = px.box(
-            data,
-            x='month',
-            y='job_waiting_time (hours)',
-            color='year',
-            facet_col='cpu_group',
-            title="Job Waiting Time by Month and CPU Group (Box Plot in Hours)",
-            labels={
-                "job_waiting_time (hours)": "Job Waiting Time (hours)",
-                "cpu_group": "CPU Group"
+        # Final layout updates
+        fig.update_layout(
+            xaxis_title="CPU Groups",
+            yaxis_title=f"Median Waiting Time ({unit})",
+            yaxis=dict(range=[0, max(y_values.max() * 1.1, 1)]),
+            uniformtext_minsize=8,
+            uniformtext_mode='hide',
+            title={
+                "x": 0.5,
+                "xanchor": "center"
             }
         )
 
-        # Adjust layout and appearance
-        fig.update_layout(yaxis=dict(range=[0, 20]), boxmode='group', title=None, showlegend=True)
-        for annotation in fig["layout"]["annotations"]:
-            if "text" in annotation and annotation["text"].startswith("CPU Group="):
-                annotation["text"] = annotation["text"].replace("CPU Group=", "")
+        return fig
 
-        # Ensure x-axis (month) follows the correct order
-        fig.update_xaxes(categoryorder="array", categoryarray=month_order)
+
+    # -------------------- Plot: Box Plot of Job Waiting Time by Month & Year --------------------
+    @render_plotly
+    def omp_job_waiting_time_by_day():
+        """
+        Line plot showing median job waiting time (minutes) by day for the selected year/month.
+        """
+        df = dataset_data()
+        if df.empty or "day" not in df.columns:
+            return go.Figure()
+
+        df_plot = df.copy()
+
+        # Ensure 'day' is numeric
+        df_plot["day"] = pd.to_numeric(df_plot["day"], errors="coerce")
+        df_plot = df_plot.dropna(subset=["day"])
+        df_plot["day"] = df_plot["day"].astype(int)
+
+        # Convert sec -> minutes
+        df_plot["job_waiting_time (minutes)"] = df_plot["first_job_waiting_time"] / 60.0
+
+        # Group by day
+        daily = (
+            df_plot.groupby("day")["job_waiting_time (minutes)"]
+            .median()
+            .reset_index()
+            .sort_values("day")
+        )
+
+        # Dynamic title
+        try:
+            year = int(input.selected_year_omp())
+            month = input.selected_month_omp().capitalize()
+        except:
+            year, month = "Unknown", "Unknown"
+
+        fig = px.line(
+            daily,
+            x="day",
+            y="job_waiting_time (minutes)",
+            markers=True,
+            title=f"{month} {year}",
+            labels={
+                "day": "Day of Month",
+                "job_waiting_time (minutes)": "Median Waiting Time (minutes)"
+            }
+        )
+
+        fig.update_layout(
+            title={"x": 0.5, "xanchor": "center"},
+            xaxis=dict(tickmode="linear", dtick=1),
+            hovermode="x unified"
+        )
 
         return fig
+
+
 
 
 

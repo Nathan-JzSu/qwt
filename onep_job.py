@@ -99,18 +99,18 @@ def oneP_job_ui():
         ui.layout_columns(
             ui.card(
                 ui.card_header(
-                    "Waiting Time vs Queue",
+                    "Median Waiting Time vs Queue",
                     class_="d-flex justify-content-between align-items-center"
                 ),
-                output_widget("waiting_time_vs_queue"),
+                output_widget("oneP_waiting_time_vs_queue"),
                 full_screen=True
             ),
             ui.card(
                 ui.card_header(
-                    "Box Plot of Job Waiting Time by Month & Year",
+                    "Daily Median Waiting Time",
                     class_="d-flex justify-content-between align-items-center"
                 ),
-                output_widget("job_waiting_time_by_month_year"),
+                output_widget("oneP_job_waiting_time_by_day"),
                 full_screen=True
             ),
             col_widths=[6, 6]
@@ -208,54 +208,123 @@ def oneP_job_server(input, output, session):
         return str(stats["count"])
 
     @render_plotly
-    def waiting_time_vs_queue():
+    def oneP_waiting_time_vs_queue():
         """
         Bar plot of median waiting time by job type.
+        Shows top 6 queues with highest waiting time; others are grouped into 'others'.
+        Converts to hours if any value > 100 min.
         """
         df = oneP_filtered_data()
         if df.empty:
             return go.Figure()
 
         df_plot = df.copy()
+
+        # Clean job_type name
         df_plot["job_type"] = df_plot["job_type"].str.replace("1-p ", "", regex=False)
-        df_plot["waiting_time_hours"] = df_plot["first_job_waiting_time"] / 60
 
-        grouped = df_plot.groupby("job_type")["waiting_time_hours"].median().reset_index()
+        # Convert to minutes
+        df_plot["waiting_time_min"] = df_plot["first_job_waiting_time"] / 60
 
-        grouped = grouped.groupby("job_type")["waiting_time_hours"].median().reset_index()
-        grouped = grouped.sort_values(by="waiting_time_hours", ascending=True)
+        # Compute median waiting time per job_type
+        medians = df_plot.groupby("job_type")["waiting_time_min"].median().reset_index()
 
+        # Identify top 6 job types with highest median
+        top6 = medians.nlargest(6, "waiting_time_min")["job_type"].tolist()
+
+        # Group others under "others"
+        df_plot["job_type_grouped"] = df_plot["job_type"].apply(lambda x: x if x in top6 else "others")
+
+        # Recalculate medians with grouped data
+        grouped = (
+            df_plot.groupby("job_type_grouped")["waiting_time_min"]
+            .median()
+            .reset_index()
+            .sort_values(by="waiting_time_min", ascending=True)
+        )
+
+        # Decide unit and format
+        convert_to_hours = grouped["waiting_time_min"].max() > 100
+        unit = "hr" if convert_to_hours else "min"
+        grouped["waiting_time_display"] = grouped["waiting_time_min"].apply(
+            lambda x: round(x / 60, 1) if convert_to_hours else round(x, 1)
+        )
+        y_values = grouped["waiting_time_display"]
+
+        # Build the bar plot
         fig = px.bar(
             grouped,
-            x="job_type",
-            y="waiting_time_hours",
-            labels={"waiting_time_hours": "Median Waiting Time (Min)", "job_type": "Job Type"},
-            title="Median Waiting Time By Queue"
+            x="job_type_grouped",
+            y=y_values,
+            text=[f"{val} {unit}" for val in y_values],
+            labels={
+                "job_type_grouped": "Job Type",
+                "waiting_time_display": f"Median Waiting Time ({unit})"
+            },
         )
+
+        fig.update_layout(
+            xaxis_title="Queue Type",
+            yaxis_title=f"Median Waiting Time ({unit})",
+            yaxis=dict(range=[0, max(y_values.max() * 1.1, 1)]),
+            uniformtext_minsize=8,
+            uniformtext_mode='hide',
+            title={"x": 0.5, "xanchor": "center"}
+        )
+
         return fig
+
 
     @render_plotly
-    def job_waiting_time_by_month_year():
+    def oneP_job_waiting_time_by_day():
         """
-        Box plot of job waiting time by month and year.
+        Line plot showing median job waiting time (minutes) by day for the selected year/month.
         """
         df = oneP_filtered_data()
-        if df.empty:
+        if df.empty or "day" not in df.columns:
             return go.Figure()
 
-        df_plot = df[df["first_job_waiting_time"] >= 0]
-        df_plot["waiting_time_hours"] = df_plot["first_job_waiting_time"] / 3600
+        df_plot = df.copy()
+        df_plot["day"] = pd.to_numeric(df_plot["day"], errors="coerce")
+        df_plot = df_plot.dropna(subset=["day"])
+        df_plot["day"] = df_plot["day"].astype(int)
 
-        fig = px.box(
-            df_plot,
-            x="month",
-            y="waiting_time_hours",
-            color="year",
-            category_orders={"month": month_order},
-            title="Job Waiting Time by Month & Year",
-            labels={"waiting_time_hours": "Waiting Time (hours)", "month": "Month"}
+        # Convert sec → minutes
+        df_plot["job_waiting_time (minutes)"] = df_plot["first_job_waiting_time"] / 60.0
+
+        daily = (
+            df_plot.groupby("day")["job_waiting_time (minutes)"]
+            .median()
+            .reset_index()
+            .sort_values("day")
         )
+
+        try:
+            year = int(input.selected_year_onep())
+            month = input.selected_month_onep().capitalize()
+        except:
+            year, month = "Unknown", "Unknown"
+
+        fig = px.line(
+            daily,
+            x="day",
+            y="job_waiting_time (minutes)",
+            markers=True,
+            title=f"{month} {year}",
+            labels={
+                "day": "Day of Month",
+                "job_waiting_time (minutes)": "Median Waiting Time (minutes)"
+            }
+        )
+
+        fig.update_layout(
+            xaxis=dict(tickmode="linear", dtick=1),
+            title={"x": 0.5, "xanchor": "center"},
+            hovermode="x unified"
+        )
+
         return fig
+
 
     @output
     @render.ui

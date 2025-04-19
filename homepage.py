@@ -330,7 +330,7 @@ def homepage_server(input, output, session):
         elif queue_filter == "buyin":
             df = df[df["queue_type"] == "buyin"]
 
-        return df[["job_type", "first_job_waiting_time", "month", "job_number", "year", "slots"]]
+        return df[["job_type", "first_job_waiting_time", "day", "month", "job_number", "year", "slots"]]
 
     # ----------------------------------------------------------------
     # 5) Summary stats (min, max, mean, median, count)
@@ -447,11 +447,15 @@ def homepage_server(input, output, session):
 
         return fig
 
+    
+    
     @render_plotly
     def job_waiting_time_by_date():
         """
-        Box plot of waiting time (in hours) by submission date (1–31), colored by year.
-        Limits to 2000 points for performance.
+        Box plot of waiting time by submission date (1–31), colored by year.
+        Uses minutes if most jobs wait under 60 minutes, otherwise hours.
+        Limits to 3500 points for performance.
+        Includes job_number in tooltips and displays outliers.
         """
         data = dataset_data()
         if data.empty:
@@ -459,39 +463,74 @@ def homepage_server(input, output, session):
 
         df = data.copy()
 
-        # Ensure we have a 'submit_date' column as datetime
-        if "submit_date" not in df.columns:
-            return go.Figure()  # Or raise an error
+        # Construct the 'submit_date' from year, month, and day
+        df["submit_date"] = pd.to_datetime({
+            "year": df["year"],
+            "month": df["month"].cat.codes + 1,
+            "day": df["day"]
+        }, errors="coerce")
 
-        df["submit_date"] = pd.to_datetime(df["submit_date"])
-        df["day"] = df["submit_date"].dt.day  # Extract 1–31
-        df["job_waiting_time_hours"] = df["first_job_waiting_time"] / 3600.0
+        df = df.dropna(subset=["submit_date"])
+        df["day"] = df["submit_date"].dt.day
 
-        # Downsample if needed
-        max_points = 2000
+        # Determine whether to display in minutes or hours
+        waiting_time_secs = df["first_job_waiting_time"]
+        use_minutes = waiting_time_secs.quantile(0.9) <= 3600
+
+        if use_minutes:
+            df["job_waiting_time_display"] = waiting_time_secs / 60.0
+            y_label = "Job Waiting Time (min)"
+        else:
+            df["job_waiting_time_display"] = waiting_time_secs / 3600.0
+            y_label = "Job Waiting Time (hour)"
+
+        # Downsample to 3500 max points
+        max_points = 3500
         if len(df) > max_points:
             df = df.sample(n=max_points, random_state=42)
 
-        # Plot by day of the month
+        year, month, _ = selected_year_month()
+
         fig = px.box(
             df,
             x="day",
-            y="job_waiting_time_hours",
+            y="job_waiting_time_display",
             color="year",
             labels={
                 "day": "Day of Month",
-                "job_waiting_time_hours": "Job Waiting Time (hours)"
+                "job_waiting_time_display": y_label,
+                "job_number": "Job Number"
             },
-            category_orders={"day": list(range(1, 32))}
+            category_orders={"day": list(range(1, 32))},
+            hover_data=["job_number"]
+        )
+
+        # Show all individual outlier points
+        fig.update_traces(
+            boxpoints="outliers",  # ensures outliers are plotted
+            marker=dict(size=5, opacity=0.6, line=dict(width=1, color="white")),
+            jitter=0.3,
+            pointpos=0
         )
 
         fig.update_layout(
+            title={
+                "text": f"{year} {month}",
+                "x": 0.5,
+                "xanchor": "center"
+            },
             boxmode="group",
-            showlegend=True,
-            xaxis=dict(tickmode="linear", dtick=1)
+            showlegend=False,
+            xaxis=dict(
+                tickmode="linear",
+                dtick=1,
+                tickangle=0
+            )
         )
 
         return fig
+
+
 
 
     @reactive.Calc
