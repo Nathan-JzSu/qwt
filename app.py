@@ -1,14 +1,15 @@
 from shiny import App, reactive, render, ui
+
+# Import UI + server logic per page
 from homepage import homepage_ui, homepage_server
 from gpu_job import gpu_job_ui, gpu_job_server
 from mpi_job import mpi_job_ui, mpi_job_server
 from omp_job import omp_job_ui, omp_job_server
-from onep_job import oneP_job_ui, oneP_job_server 
+from onep_job import oneP_job_ui, oneP_job_server
 
-
-# Import additional page logic if needed (e.g., GPU Job, MPI Job)
-# from gpu_job import gpu_job_ui, gpu_job_server
-
+# ----------------------------------------------------------------------
+# UI: Main Layout with Navigation Bar
+# ----------------------------------------------------------------------
 app_ui = ui.page_fluid(
     ui.tags.div(
         ui.navset_bar(
@@ -26,47 +27,50 @@ app_ui = ui.page_fluid(
     ui.output_ui("page_content")
 )
 
+# ----------------------------------------------------------------------
+# Server: Reactive Page Switching + Initialization
+# ----------------------------------------------------------------------
 def server(input, output, session):
     current_page = reactive.Value("All Jobs")
+    initialized_pages = set()
 
     @reactive.effect
     def update_page():
         current_page.set(input.selected_navset_bar())
 
-    # Dynamically render UI based on the current page
     @output
     @render.ui
     def page_content():
-        if current_page.get() == "All Jobs":
-            return homepage_ui()
-        elif current_page.get() == "GPU Job":
-            return gpu_job_ui()
-        elif current_page.get() == "MPI Job":
-            return mpi_job_ui()
-        elif current_page.get() == "OMP Job":
-            return omp_job_ui()
-        elif current_page.get() == "1-p Job":
-            return oneP_job_ui()
-
-    # Dynamically call server logic based on the current page
-    # Store which server has already been initialized
-    initialized_pages = set()
+        match current_page.get():
+            case "All Jobs":
+                return homepage_ui()
+            case "GPU Job":
+                return gpu_job_ui()
+            case "MPI Job":
+                return mpi_job_ui()
+            case "OMP Job":
+                return omp_job_ui()
+            case "1-p Job":
+                return oneP_job_ui()
 
     @reactive.effect
     def call_server():
         page = current_page.get()
         if page not in initialized_pages:
             initialized_pages.add(page)
-            if page == "All Jobs":
-                homepage_server(input, output, session)
-            elif page == "GPU Job":
-                gpu_job_server(input, output, session)
-            elif page == "MPI Job":
-                mpi_job_server(input, output, session)
-            elif page == "OMP Job":
-                omp_job_server(input, output, session)
-            elif page == "1-p Job":
-                oneP_job_server(input, output, session)
+            match page:
+                case "All Jobs":
+                    homepage_server(input, output, session)
+                case "GPU Job":
+                    gpu_job_server(input, output, session)
+                case "MPI Job":
+                    mpi_job_server(input, output, session)
+                case "OMP Job":
+                    omp_job_server(input, output, session)
+                case "1-p Job":
+                    oneP_job_server(input, output, session)
 
-
+# ----------------------------------------------------------------------
+# Launch the App
+# ----------------------------------------------------------------------
 app = App(app_ui, server)
