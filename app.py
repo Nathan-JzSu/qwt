@@ -1,30 +1,30 @@
-from shiny import App, reactive, render, ui
-from homepage import homepage_ui, homepage_server
-from gpu_job import gpu_job_ui, gpu_job_server
-from mpi_job import mpi_job_ui, mpi_job_server
-from omp_job import omp_job_ui, omp_job_server
-from onep_job import oneP_job_ui, oneP_job_server 
-
-
-# Import additional page logic if needed (e.g., GPU Job, MPI Job)
+# from shiny import App, reactive, render, ui
+# from homepage import homepage_ui, homepage_server
 # from gpu_job import gpu_job_ui, gpu_job_server
+# from mpi_job import mpi_job_ui, mpi_job_server
+# from omp_job import omp_job_ui, omp_job_server
+# from onep_job import oneP_job_ui, oneP_job_server 
 
-app_ui = ui.page_fluid(
-    ui.tags.div(
-        ui.navset_bar(
-            ui.nav_panel("All Jobs"),
-            ui.nav_panel("GPU Job"),
-            ui.nav_panel("MPI Job"),
-            ui.nav_panel("OMP Job"),
-            ui.nav_panel("1-p Job"),
-            id="selected_navset_bar",
-            title="Entry Job Analysis",
-        ),
-        id="nav-bar-content",
-        style="background-color: #f8f9fa; padding: 10px; height: 75px;"
-    ),
-    ui.output_ui("page_content")
-)
+
+# # Import additional page logic if needed (e.g., GPU Job, MPI Job)
+# # from gpu_job import gpu_job_ui, gpu_job_server
+
+# app_ui = ui.page_fluid(
+#     ui.tags.div(
+#         ui.navset_bar(
+#             ui.nav_panel("All Jobs"),
+#             ui.nav_panel("GPU Job"),
+#             ui.nav_panel("MPI Job"),
+#             ui.nav_panel("OMP Job"),
+#             ui.nav_panel("1-p Job"),
+#             id="selected_navset_bar",
+#             title="Entry Job Analysis",
+#         ),
+#         id="nav-bar-content",
+#         style="background-color: #f8f9fa; padding: 10px; height: 75px;"
+#     ),
+#     ui.output_ui("page_content")
+# )
 
 # def server(input, output, session):
 #     current_page = reactive.Value("All Jobs")
@@ -62,54 +62,62 @@ app_ui = ui.page_fluid(
 #         elif current_page.get() == "1-p Job":
 #             oneP_job_server(input, output, session)
 
+
+# app = App(app_ui, server)
+
+from shiny import App, reactive, render, ui
+from homepage import homepage_ui, homepage_server
+from gpu_job import gpu_job_ui, gpu_job_server
+from mpi_job import mpi_job_ui, mpi_job_server
+from omp_job import omp_job_ui, omp_job_server
+from onep_job import oneP_job_ui, oneP_job_server
+
+app_ui = ui.page_fluid(
+    ui.navset_bar(
+        ui.nav_panel("All Jobs"),
+        ui.nav_panel("GPU Job"),
+        ui.nav_panel("MPI Job"),
+        ui.nav_panel("OMP Job"),
+        ui.nav_panel("1-p Job"),
+        id="selected_navset_bar",
+        title="Entry Job Analysis",
+    ),
+    ui.output_ui("dynamic_page")
+)
+
 def server(input, output, session):
     current_page = reactive.Value("All Jobs")
 
     @reactive.effect
-    def update_page():
+    def _():
         current_page.set(input.selected_navset_bar())
 
     @output
     @render.ui
-    def page_content():
-        page = current_page.get()
-        if page == "All Jobs":
-            return homepage_ui()
-        elif page == "GPU Job":
-            return gpu_job_ui()
-        elif page == "MPI Job":
-            return mpi_job_ui()
-        elif page == "OMP Job":
-            return omp_job_ui()
-        elif page == "1-p Job":
-            return oneP_job_ui()
+    def dynamic_page():
+        selected = current_page.get()
 
-    # Wrap each server call in its own scoped reactive.effect
-    @reactive.effect
-    def _homepage():
-        if current_page.get() == "All Jobs":
+        # Clear previous bindings by nesting each page’s render logic in a new block
+        if selected == "All Jobs":
+            def page_server(input, output, session):
+                homepage_server(input, output, session)
             homepage_server(input, output, session)
+            return homepage_ui()
 
-    @reactive.effect
-    def _gpu():
-        if current_page.get() == "GPU Job":
-            gpu_job_server(input, output, session)
+        elif selected == "GPU Job":
+            gpu_job_server(input, output, session)  # This will re-bind cleanly now
+            return gpu_job_ui()
 
-    @reactive.effect
-    def _mpi():
-        if current_page.get() == "MPI Job":
+        elif selected == "MPI Job":
             mpi_job_server(input, output, session)
+            return mpi_job_ui()
 
-    @reactive.effect
-    def _omp():
-        if current_page.get() == "OMP Job":
+        elif selected == "OMP Job":
             omp_job_server(input, output, session)
+            return omp_job_ui()
 
-    @reactive.effect
-    def _1p():
-        if current_page.get() == "1-p Job":
+        elif selected == "1-p Job":
             oneP_job_server(input, output, session)
-
-
+            return oneP_job_ui()
 
 app = App(app_ui, server)
