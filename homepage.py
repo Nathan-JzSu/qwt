@@ -1,67 +1,641 @@
-import faicons as fa
+# import faicons as fa
+# import pandas as pd
+# from shiny import ui, render, reactive
+# from shinywidgets import output_widget, render_plotly
+# import plotly.express as px
+# import plotly.graph_objects as go
+# import datetime
+
+
+# # Load data
+# dataset = pd.read_feather("/projectnb/rcs-intern/Jiazheng/accounting/ShinyApp_Data.feather")
+# # Simplify job types for nicer grouping
+# dataset = dataset.copy()
+
+# # Define a mapping for job type simplification based on prefixes
+# job_type_mapping = {
+#     "1-p": "1-P",  # Map job types starting with "1-p" to "1-P"
+#     "GPU": "GPU",  # Map job types starting with "GPU" to "GPU"
+#     "MPI": "MPI",  # Map job types starting with "MPI" to "MPI"
+#     "OMP": "OMP"   # Map job types starting with "OMP" to "OMP"
+# }
+
+# # Apply the mapping using a lambda function
+# dataset["job_type"] = dataset["job_type"].apply(
+#     lambda x: next((v for k, v in job_type_mapping.items() if str(x).startswith(k)), x))
+
+# # Handle empty strings (e.g., "   " becomes NaN):
+# dataset["job_type"] = dataset["job_type"].replace("", pd.NA)
+
+# # Ensure 'year' is integer
+# dataset["year"] = dataset["year"].astype(int)
+
+# # Define month ordering
+# month_order = [
+#     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+#     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+# ]
+# dataset["month"] = pd.Categorical(dataset["month"], categories=month_order, ordered=True)
+
+# # Pre-define icons
+# ICONS = {
+#     "min": fa.icon_svg("arrow-down"),
+#     "max": fa.icon_svg("arrow-up"),
+#     "mean": fa.icon_svg("users"),
+#     "median": fa.icon_svg("battery-half"),
+#     "currency-dollar": fa.icon_svg("dollar-sign"),
+#     "ellipsis": fa.icon_svg("ellipsis"),
+#     "clock": fa.icon_svg("clock"),
+#     "speed": fa.icon_svg("gauge"),
+#     "chart-bar": fa.icon_svg("chart-bar"),
+#     "calendar": fa.icon_svg("calendar"),
+#     "comment": fa.icon_svg("comment"),
+#     "bell": fa.icon_svg("bell"),
+#     "camera": fa.icon_svg("camera"),
+#     "heart": fa.icon_svg("heart"),
+#     "count": fa.icon_svg("list"),
+# }
+
+# # --------------------------------------------------------------------
+# # UI 
+# # --------------------------------------------------------------------
+# now = datetime.datetime.now()
+
+# # custom value box to display icon (title output_id) horizontally
+# def value_box_custom(title, output_id, icon):
+#     return ui.value_box(
+#         "",
+#         ui.div(
+#             ui.div(
+#                 ui.div(icon, class_="value-box-showcase custom-icon"),
+#                 ui.div(
+#                     ui.div(title, class_="value-box-title"),
+#                     ui.div(ui.output_text(output_id), class_="value-box-value"),
+#                     class_="custom-text"
+#                 ),
+#                 class_="d-flex align-items-center gap-2"
+#             )
+#         )
+#     )
+
+# def homepage_ui():
+#     """
+#     Build the UI for the homepage, including:
+#     - Sidebar with dynamic slider, job_type, and year checkbox groups
+#     - Value boxes for summary statistics
+#     - Main area with data table and multiple plots
+#     """
+#     return ui.page_sidebar(
+#         ui.sidebar(
+#             ui.output_ui("dynamic_slider"),  # Dynamically render slider
+#             ui.input_checkbox_group(
+#                 "job_type",
+#                 "Job Type",
+#                 list(dataset["job_type"].unique()),
+#                 selected=list(dataset["job_type"].unique()),
+#                 inline=True,
+#             ),
+#             ui.input_action_button("select_all", "Select All"),
+#             ui.input_action_button("unselect_all", "Unselect All"),
+#             open="desktop",
+#         ),
+#         ui.output_ui("warning_message"),
+#         ui.div(  # <== this replaces the layout_columns for inputs
+#             ui.div(
+#                 ui.input_text(
+#                     "selected_year",
+#                     "Enter Year",
+#                     value=str(now.year),
+#                     placeholder="e.g., 2024"
+#                 ),
+#                 style="margin-right: 20px; width: 250px;"
+#             ),
+#             ui.div(
+#                 ui.input_text(
+#                     "selected_month",
+#                     "Enter Month (e.g., Jan, Feb)",
+#                     value=now.strftime("%b"),
+#                     placeholder="e.g., Jan"
+#                 ),
+#                 style="margin-right: 20px; width: 250px;"
+#             ),
+#             ui.div(
+#                 ui.input_select(
+#                     "queue_filter",
+#                     "Queue Type",
+#                     choices={
+#                         "all": "All",
+#                         "shared": "Shared Nodes Only",
+#                         "buyin": "Buyin Nodes Only"
+#                     },
+#                     selected="all"
+#                 ),
+#                 style="width: 250px;"
+#             ),
+#             style="display: flex; align-items: flex-end; margin-bottom: 1em;"
+#         ),
+#         ui.tags.style("""
+#             .custom-icon {
+#                 align-items: center;
+#                 justify-content: center;
+#             }
+
+#             .custom-text {
+#                 flex-grow: 1;
+#                 display: flex;
+#                 flex-direction: column;
+#                 justify-content: center;
+#             }
+
+#             .bslib-value-box .value-box-title {
+#                 margin-top: 0;
+#                 margin-bottom: 0rem;
+#             }
+#             .bslib-value-box .value-box-value {
+#                 margin-bottom: 0rem;
+#             }
+
+#             .bslib-value-box .value-box-showcase,
+#             .bslib-value-box .value-box-showcase > .html-fill-item {
+#                 width: unset !important;
+#                 padding: 0rem;
+#             }
+            
+#             .bslib-value-box .value-box-area {
+#                 padding: 0 !important;
+#             }
+#         """),
+#         ui.layout_columns(
+#             value_box_custom("Min Waiting Time", "min_waiting_time", ICONS["min"]),
+#             value_box_custom("Max Waiting Time", "max_waiting_time", ICONS["max"]),
+#             value_box_custom("Mean Waiting Time", "mean_waiting_time", ICONS["speed"]),
+#             value_box_custom("Median Waiting Time", "median_waiting_time", ICONS["median"]),
+#             value_box_custom("Number of Jobs", "job_count", ICONS["count"]),
+#             fill=False,
+#         ),
+#         ui.layout_columns(
+#             ui.card(
+#                 ui.card_header(
+#                     "Waiting Time vs Job Type",
+#                     ui.popover(
+#                         ICONS["ellipsis"],
+#                         ui.input_radio_buttons(
+#                             "scatter_color",
+#                             None,
+#                             ["job_type", "none"],
+#                             inline=True,
+#                         ),
+#                         title="Add a color variable",
+#                         placement="top",
+#                     ),
+#                     class_="d-flex justify-content-between align-items-center",
+#                 ),
+#                 output_widget("all_jobs_barplot"),
+#                 full_screen=True
+#             ),
+#             ui.card(
+#                 ui.card_header(
+#                     "Box Plot of Job Waiting Time by Date",
+#                     class_="d-flex justify-content-between align-items-center"
+#                 ),
+#                 output_widget("job_waiting_time_by_date"),
+#                 full_screen=True
+#             ),
+#             col_widths=[6, 6]
+#         ),
+#         fillable=True,
+#     )
+
+
+# # --------------------------------------------------------------------
+# # SERVER LOGIC
+# # --------------------------------------------------------------------
+
+# def homepage_server(input, output, session):
+#     """
+#     Server logic for homepage:
+#     - Reactive filtering based on years, job_type, and waiting_time
+#     - Calculation of dynamic slider range
+#     - Creation of summary statistics and plots
+#     """
+
+#     # ----------------------------------------------------------------
+#     # 1) Filter by year only, to determine slider range
+#     # ----------------------------------------------------------------
+#     @reactive.Calc
+#     def dataset_year_filtered():
+#         # try:
+#         #     year = int(input.selected_year())
+#         # except ValueError:
+#         #     year = now.year  # fallback to current year
+#         # df_years = dataset[dataset["year"] == year]
+#         # return df_years  # <- This was missing
+#         year, month, warning = selected_year_month()
+#         if warning or year is None:
+#             return dataset.iloc[0:0]  # return empty DataFrame
+#         return dataset[dataset["year"] == year]
+
+
+#     # ----------------------------------------------------------------
+#     # 2) Compute slider range based on the year-filtered dataset
+#     # ----------------------------------------------------------------
+#     @reactive.Calc
+#     def formatted_range():
+#         """
+#         Decide the unit (Seconds, Minutes, or Hours) and compute
+#         the (min, max) range for waiting_time among the year-filtered data.
+#         """
+#         filtered_data = dataset_year_filtered()
+#         if filtered_data.empty:
+#             return (0, 0), "Seconds"
+
+#         min_time = max(filtered_data["first_job_waiting_time"].min(), 0)
+#         max_time = filtered_data["first_job_waiting_time"].max()
+
+#         # No valid data (e.g., all are NaN)
+#         if pd.isna(min_time) or pd.isna(max_time):
+#             return (0, 0), "Seconds"
+
+#         if max_time >= 3600:
+#             # Display slider in hours
+#             return (int(min_time // 3600), int(max_time // 3600) + 1), "Hours"
+#         elif max_time >= 60:
+#             # Display slider in minutes
+#             return (int(min_time // 60), int(max_time // 60) + 1), "Minutes"
+#         else:
+#             # Display slider in seconds
+#             return (int(min_time), int(max_time) + 1), "Seconds"
+
+#     # ----------------------------------------------------------------
+#     # 3) Dynamic slider UI
+#     # ----------------------------------------------------------------
+#     @output
+#     @render.ui
+#     def dynamic_slider():
+#         """
+#         Dynamically render the slider UI based on the (range, unit).
+#         """
+#         (range_min, range_max), unit_label = formatted_range()
+#         # Prevent slider rendering if range is invalid
+#         if range_max <= range_min:
+#             return ui.markdown("⚠️ No data available to display slider.")
+
+#         return ui.input_slider(
+#             "first_job_waiting_time",
+#             f"Waiting Time ({unit_label})",
+#             min=range_min,
+#             max=range_max,
+#             value=(range_min, range_max),
+#         )
+
+#     # ----------------------------------------------------------------
+#     # 4) Final reactive filter: (years + job_type + waiting_time)
+#     # ----------------------------------------------------------------
+#     @reactive.Calc
+#     def dataset_data():
+#         """
+#         The fully filtered dataset used for tables & plots.
+#         Filters:
+#           1) year in input.years()
+#           2) job_type in input.job_type()
+#           3) waiting_time within the selected slider range
+#         """
+#         (range_min, range_max), unit_label = formatted_range()
+#         slider_min, slider_max = input.first_job_waiting_time()
+
+#         year, month, warning = selected_year_month()
+#         if warning or year is None:
+#             return dataset.iloc[0:0]
+
+#         # Convert slider values back to seconds
+#         if unit_label == "Hours":
+#             min_sec = slider_min * 3600
+#             max_sec = slider_max * 3600
+#         elif unit_label == "Minutes":
+#             min_sec = slider_min * 60
+#             max_sec = slider_max * 60
+#         else:
+#             min_sec = slider_min
+#             max_sec = slider_max
+
+#         job_types = input.job_type()
+
+#         df = dataset[(dataset["year"] == year) & (dataset["month"] == month)]
+#         df = df[df["first_job_waiting_time"].between(min_sec, max_sec)]
+#         df = df[df["job_type"].isin(job_types)]
+
+#         queue_filter = input.queue_filter()
+#         if queue_filter == "shared":
+#             df = df[df["queue_type"] == "shared"]
+#         elif queue_filter == "buyin":
+#             df = df[df["queue_type"] == "buyin"]
+
+#         return df[["job_type", "first_job_waiting_time", "day", "month", "job_number", "year", "slots"]]
+
+#     # ----------------------------------------------------------------
+#     # 5) Summary stats (min, max, mean, median, count)
+#     # ----------------------------------------------------------------
+#     @reactive.Calc
+#     def waiting_time_stats():
+#         """
+#         Return a dict of summary statistics for the filtered data.
+#         Times are stored in minutes for easy conversion.
+#         """
+#         df = dataset_data()
+#         if df.empty:
+#             return {"min": None, "max": None, "mean": None, "median": None, "count": 0}
+
+#         waiting_times_sec = df["first_job_waiting_time"]
+#         stats = {
+#             "min": max(waiting_times_sec.min() / 60.0, 0),
+#             "max": waiting_times_sec.max() / 60.0,
+#             "mean": waiting_times_sec.mean() / 60.0,
+#             "median": waiting_times_sec.median() / 60.0,
+#             "count": df.shape[0],
+#         }
+#         return stats
+
+#     # ----------------------------------------------------------------
+#     # Value box outputs
+#     # ----------------------------------------------------------------
+#     @output
+#     @render.text
+#     def min_waiting_time():
+#         stats = waiting_time_stats()
+#         if stats["min"] is None:
+#             return "No data available"
+#         min_val = stats["min"]
+#         return f"{min_val / 60:.1f} hours" if min_val > 60 else f"{min_val:.1f} min"
+
+#     @output
+#     @render.text
+#     def max_waiting_time():
+#         stats = waiting_time_stats()
+#         if stats["max"] is None:
+#             return "No data available"
+#         max_val = stats["max"]
+#         return f"{max_val / 60:.1f} hours" if max_val > 60 else f"{max_val:.1f} min"
+
+#     @output
+#     @render.text
+#     def mean_waiting_time():
+#         stats = waiting_time_stats()
+#         if stats["mean"] is None:
+#             return "No data available"
+#         mean_val = stats["mean"]
+#         return f"{mean_val / 60:.1f} hours" if mean_val > 60 else f"{mean_val:.1f} min"
+
+#     @output
+#     @render.text
+#     def median_waiting_time():
+#         stats = waiting_time_stats()
+#         if stats["median"] is None:
+#             return "No data available"
+#         median_val = stats["median"]
+#         return f"{median_val / 60:.1f} hours" if median_val > 60 else f"{median_val:.1f} min"
+
+#     @output
+#     @render.text
+#     def job_count():
+#         stats = waiting_time_stats()
+#         return str(stats["count"])
+
+    
+#     # ----------------------------------------------------------------
+#     # PLOTS
+#     # ----------------------------------------------------------------
+
+#     # 1) Bar plot
+#     @render_plotly
+#     def all_jobs_barplot():
+#         """
+#         Median waiting time (minutes) by job type, with optional coloring.
+#         Adds extra Y-axis padding for text labels above bars.
+#         """
+#         data = dataset_data()
+#         if data.empty:
+#             return go.Figure()
+
+#         color_option = input.scatter_color()
+
+#         # Convert to minutes
+#         df = data.copy()
+#         df["first_job_waiting_time"] = (df["first_job_waiting_time"] / 60).round(2)
+
+#         # Compute medians
+#         medians = (
+#             df.groupby("job_type")["first_job_waiting_time"]
+#             .median()
+#             .reset_index()
+#         )
+
+#         # Create plot
+#         fig = px.bar(
+#             medians,
+#             x="job_type",
+#             y="first_job_waiting_time",
+#             color=None if color_option == "none" else color_option,
+#             labels={
+#                 "first_job_waiting_time": "Median Waiting Time (min)",
+#                 "job_type": "Job Type",
+#             },
+#             text=medians["first_job_waiting_time"].apply(lambda x: f"{x:.1f}" if x != 0 else "0")
+#         )
+
+#         # Adjust visuals
+#         fig.update_traces(textposition='outside', textfont_size=12)
+
+#         # Add padding to Y-axis so text isn't cut off
+#         fig.update_layout(
+#             yaxis=dict(range=[0, medians["first_job_waiting_time"].max() * 1.15])
+#         )
+
+#         return fig
+
+
+    
+    
+#     @render_plotly
+#     def job_waiting_time_by_date():
+#         """
+#         Box plot of waiting time by submission date (1–31), colored by year.
+#         Uses minutes if most jobs wait under 60 minutes, otherwise hours.
+#         Limits to 3500 points for performance.
+#         Includes job_number in tooltips and displays outliers.
+#         """
+#         data = dataset_data()
+#         if data.empty:
+#             return go.Figure()
+
+#         df = data.copy()
+
+#         # Construct the 'submit_date' from year, month, and day
+#         df["submit_date"] = pd.to_datetime({
+#             "year": df["year"],
+#             "month": df["month"].cat.codes + 1,
+#             "day": df["day"]
+#         }, errors="coerce")
+
+#         df = df.dropna(subset=["submit_date"])
+#         df["day"] = df["submit_date"].dt.day
+
+#         # Determine whether to display in minutes or hours
+#         waiting_time_secs = df["first_job_waiting_time"]
+#         use_minutes = waiting_time_secs.quantile(0.9) <= 3600
+
+#         if use_minutes:
+#             df["job_waiting_time_display"] = waiting_time_secs / 60.0
+#             y_label = "Job Waiting Time (min)"
+#         else:
+#             df["job_waiting_time_display"] = waiting_time_secs / 3600.0
+#             y_label = "Job Waiting Time (hour)"
+
+#         # Downsample to 3500 max points
+#         max_points = 3500
+#         if len(df) > max_points:
+#             df = df.sample(n=max_points, random_state=42)
+
+#         year, month, _ = selected_year_month()
+
+#         fig = px.box(
+#             df,
+#             x="day",
+#             y="job_waiting_time_display",
+#             color="year",
+#             labels={
+#                 "day": "Day of Month",
+#                 "job_waiting_time_display": y_label,
+#                 "job_number": "Job Number"
+#             },
+#             category_orders={"day": list(range(1, 32))},
+#             hover_data=["job_number"]
+#         )
+
+#         # Show all individual outlier points
+#         fig.update_traces(
+#             boxpoints="outliers",  # ensures outliers are plotted
+#             marker=dict(size=5, opacity=0.6, line=dict(width=1, color="white")),
+#             jitter=0.3,
+#             pointpos=0
+#         )
+
+#         fig.update_layout(
+#             title={
+#                 "text": f"{year} {month}",
+#                 "x": 0.5,
+#                 "xanchor": "center"
+#             },
+#             boxmode="group",
+#             showlegend=False,
+#             xaxis=dict(
+#                 tickmode="linear",
+#                 dtick=1,
+#                 tickangle=0
+#             )
+#         )
+
+#         return fig
+
+
+
+
+#     @reactive.Calc
+#     def selected_year_month():
+#         try:
+#             year = int(input.selected_year())
+#         except ValueError:
+#             year = now.year  # fallback if invalid
+
+#         month = input.selected_month().capitalize()
+
+#         # Check if the month is valid
+#         if month not in month_order:
+#             return None, None, "Invalid month format. Please use 3-letter month (e.g., Jan, Feb)."
+
+#         # Check for future data
+#         latest_year = dataset["year"].max()
+#         future_check = (
+#             year > latest_year or
+#             (year == latest_year and month_order.index(month) > dataset[dataset["year"] == year]["month"].cat.codes.max())
+#         )
+
+#         if future_check:
+#             return year, month, "No data available for this month."
+
+#         return year, month, None
+
+
+#     # ----------------------------------------------------------------
+#     # "Select All" & "Unselect All" handlers
+#     # ----------------------------------------------------------------
+#     @reactive.effect
+#     @reactive.event(input.select_all)
+#     def _():
+#         all_job_types = list(dataset["job_type"].unique())
+#         ui.update_checkbox_group("job_type", selected=all_job_types)
+
+#     @reactive.effect
+#     @reactive.event(input.unselect_all)
+#     def _():
+#         ui.update_checkbox_group("job_type", selected=[])
+
+#     @output
+#     @render.ui
+#     def warning_message():
+#         _, _, warning = selected_year_month()
+#         if warning:
+#             return ui.markdown(f"**⚠️ Warning:** {warning}")
+#         return None
+
+import datetime
 import pandas as pd
-from shiny import ui, render, reactive
-from shinywidgets import output_widget, render_plotly
 import plotly.express as px
 import plotly.graph_objects as go
-import datetime
+from shiny import ui, render, reactive
+from shinywidgets import output_widget, render_plotly
+import faicons as fa
 
 
-# Load data
-dataset = pd.read_feather("/projectnb/rcs-intern/Jiazheng/accounting/ShinyApp_Data.feather")
-# Simplify job types for nicer grouping
-dataset = dataset.copy()
+# =====================
+# Data & Constants Setup
+# =====================
 
-# Define a mapping for job type simplification based on prefixes
+now = datetime.datetime.now()
+
+dataset = pd.read_feather("/projectnb/rcs-intern/Jiazheng/accounting/ShinyApp_Data.feather").copy()
+
 job_type_mapping = {
-    "1-p": "1-P",  # Map job types starting with "1-p" to "1-P"
-    "GPU": "GPU",  # Map job types starting with "GPU" to "GPU"
-    "MPI": "MPI",  # Map job types starting with "MPI" to "MPI"
-    "OMP": "OMP"   # Map job types starting with "OMP" to "OMP"
+    "1-p": "1-P",
+    "GPU": "GPU",
+    "MPI": "MPI",
+    "OMP": "OMP"
 }
-
-# Apply the mapping using a lambda function
 dataset["job_type"] = dataset["job_type"].apply(
     lambda x: next((v for k, v in job_type_mapping.items() if str(x).startswith(k)), x))
-
-# Handle empty strings (e.g., "   " becomes NaN):
 dataset["job_type"] = dataset["job_type"].replace("", pd.NA)
-
-# Ensure 'year' is integer
 dataset["year"] = dataset["year"].astype(int)
 
-# Define month ordering
 month_order = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ]
 dataset["month"] = pd.Categorical(dataset["month"], categories=month_order, ordered=True)
 
-# Pre-define icons
 ICONS = {
     "min": fa.icon_svg("arrow-down"),
     "max": fa.icon_svg("arrow-up"),
     "mean": fa.icon_svg("users"),
     "median": fa.icon_svg("battery-half"),
-    "currency-dollar": fa.icon_svg("dollar-sign"),
-    "ellipsis": fa.icon_svg("ellipsis"),
-    "clock": fa.icon_svg("clock"),
-    "speed": fa.icon_svg("gauge"),
-    "chart-bar": fa.icon_svg("chart-bar"),
-    "calendar": fa.icon_svg("calendar"),
-    "comment": fa.icon_svg("comment"),
-    "bell": fa.icon_svg("bell"),
-    "camera": fa.icon_svg("camera"),
-    "heart": fa.icon_svg("heart"),
     "count": fa.icon_svg("list"),
+    "speed": fa.icon_svg("gauge"),
+    "ellipsis": fa.icon_svg("ellipsis"),
 }
 
-# --------------------------------------------------------------------
-# UI 
-# --------------------------------------------------------------------
-now = datetime.datetime.now()
 
-# custom value box to display icon (title output_id) horizontally
+# ================
+# UI COMPONENT
+# ================
+
 def value_box_custom(title, output_id, icon):
     return ui.value_box(
         "",
@@ -79,55 +653,35 @@ def value_box_custom(title, output_id, icon):
     )
 
 def homepage_ui():
-    """
-    Build the UI for the homepage, including:
-    - Sidebar with dynamic slider, job_type, and year checkbox groups
-    - Value boxes for summary statistics
-    - Main area with data table and multiple plots
-    """
     return ui.page_sidebar(
         ui.sidebar(
-            ui.output_ui("dynamic_slider"),  # Dynamically render slider
+            ui.output_ui("dynamic_slider"),
             ui.input_checkbox_group(
                 "job_type",
                 "Job Type",
                 list(dataset["job_type"].unique()),
                 selected=list(dataset["job_type"].unique()),
-                inline=True,
+                inline=True
             ),
             ui.input_action_button("select_all", "Select All"),
             ui.input_action_button("unselect_all", "Unselect All"),
-            open="desktop",
+            open="desktop"
         ),
         ui.output_ui("warning_message"),
-        ui.div(  # <== this replaces the layout_columns for inputs
+        ui.div(
             ui.div(
-                ui.input_text(
-                    "selected_year",
-                    "Enter Year",
-                    value=str(now.year),
-                    placeholder="e.g., 2024"
-                ),
+                ui.input_text("selected_year", "Enter Year", value=str(now.year)),
                 style="margin-right: 20px; width: 250px;"
             ),
             ui.div(
-                ui.input_text(
-                    "selected_month",
-                    "Enter Month (e.g., Jan, Feb)",
-                    value=now.strftime("%b"),
-                    placeholder="e.g., Jan"
-                ),
+                ui.input_text("selected_month", "Enter Month (e.g., Jan, Feb)", value=now.strftime("%b")),
                 style="margin-right: 20px; width: 250px;"
             ),
             ui.div(
                 ui.input_select(
                     "queue_filter",
                     "Queue Type",
-                    choices={
-                        "all": "All",
-                        "shared": "Shared Nodes Only",
-                        "buyin": "Buyin Nodes Only"
-                    },
+                    choices={"all": "All", "shared": "Shared Nodes Only", "buyin": "Buyin Nodes Only"},
                     selected="all"
                 ),
                 style="width: 250px;"
@@ -139,31 +693,18 @@ def homepage_ui():
                 align-items: center;
                 justify-content: center;
             }
-
             .custom-text {
                 flex-grow: 1;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
             }
-
-            .bslib-value-box .value-box-title {
-                margin-top: 0;
-                margin-bottom: 0rem;
+            .bslib-value-box .value-box-title { margin-top: 0; margin-bottom: 0rem; }
+            .bslib-value-box .value-box-value { margin-bottom: 0rem; }
+            .bslib-value-box .value-box-showcase, .bslib-value-box .value-box-showcase > .html-fill-item {
+                width: unset !important; padding: 0rem;
             }
-            .bslib-value-box .value-box-value {
-                margin-bottom: 0rem;
-            }
-
-            .bslib-value-box .value-box-showcase,
-            .bslib-value-box .value-box-showcase > .html-fill-item {
-                width: unset !important;
-                padding: 0rem;
-            }
-            
-            .bslib-value-box .value-box-area {
-                padding: 0 !important;
-            }
+            .bslib-value-box .value-box-area { padding: 0 !important; }
         """),
         ui.layout_columns(
             value_box_custom("Min Waiting Time", "min_waiting_time", ICONS["min"]),
@@ -171,7 +712,7 @@ def homepage_ui():
             value_box_custom("Mean Waiting Time", "mean_waiting_time", ICONS["speed"]),
             value_box_custom("Median Waiting Time", "median_waiting_time", ICONS["median"]),
             value_box_custom("Number of Jobs", "job_count", ICONS["count"]),
-            fill=False,
+            fill=False
         ),
         ui.layout_columns(
             ui.card(
@@ -179,400 +720,161 @@ def homepage_ui():
                     "Waiting Time vs Job Type",
                     ui.popover(
                         ICONS["ellipsis"],
-                        ui.input_radio_buttons(
-                            "scatter_color",
-                            None,
-                            ["job_type", "none"],
-                            inline=True,
-                        ),
-                        title="Add a color variable",
-                        placement="top",
+                        ui.input_radio_buttons("scatter_color", None, ["job_type", "none"], inline=True),
+                        title="Add a color variable", placement="top"
                     ),
-                    class_="d-flex justify-content-between align-items-center",
-                ),
-                output_widget("all_jobs_barplot"),
-                full_screen=True
-            ),
-            ui.card(
-                ui.card_header(
-                    "Box Plot of Job Waiting Time by Date",
                     class_="d-flex justify-content-between align-items-center"
                 ),
-                output_widget("job_waiting_time_by_date"),
-                full_screen=True
+                output_widget("all_jobs_barplot"), full_screen=True
+            ),
+            ui.card(
+                ui.card_header("Box Plot of Job Waiting Time by Date", class_="d-flex justify-content-between align-items-center"),
+                output_widget("job_waiting_time_by_date"), full_screen=True
             ),
             col_widths=[6, 6]
         ),
-        fillable=True,
+        fillable=True
     )
 
 
-# --------------------------------------------------------------------
+# ================
 # SERVER LOGIC
-# --------------------------------------------------------------------
+# ================
 
 def homepage_server(input, output, session):
-    """
-    Server logic for homepage:
-    - Reactive filtering based on years, job_type, and waiting_time
-    - Calculation of dynamic slider range
-    - Creation of summary statistics and plots
-    """
-
-    # ----------------------------------------------------------------
-    # 1) Filter by year only, to determine slider range
-    # ----------------------------------------------------------------
-    @reactive.Calc
-    def dataset_year_filtered():
-        # try:
-        #     year = int(input.selected_year())
-        # except ValueError:
-        #     year = now.year  # fallback to current year
-        # df_years = dataset[dataset["year"] == year]
-        # return df_years  # <- This was missing
-        year, month, warning = selected_year_month()
-        if warning or year is None:
-            return dataset.iloc[0:0]  # return empty DataFrame
-        return dataset[dataset["year"] == year]
-
-
-    # ----------------------------------------------------------------
-    # 2) Compute slider range based on the year-filtered dataset
-    # ----------------------------------------------------------------
-    @reactive.Calc
-    def formatted_range():
-        """
-        Decide the unit (Seconds, Minutes, or Hours) and compute
-        the (min, max) range for waiting_time among the year-filtered data.
-        """
-        filtered_data = dataset_year_filtered()
-        if filtered_data.empty:
-            return (0, 0), "Seconds"
-
-        min_time = max(filtered_data["first_job_waiting_time"].min(), 0)
-        max_time = filtered_data["first_job_waiting_time"].max()
-
-        # No valid data (e.g., all are NaN)
-        if pd.isna(min_time) or pd.isna(max_time):
-            return (0, 0), "Seconds"
-
-        if max_time >= 3600:
-            # Display slider in hours
-            return (int(min_time // 3600), int(max_time // 3600) + 1), "Hours"
-        elif max_time >= 60:
-            # Display slider in minutes
-            return (int(min_time // 60), int(max_time // 60) + 1), "Minutes"
-        else:
-            # Display slider in seconds
-            return (int(min_time), int(max_time) + 1), "Seconds"
-
-    # ----------------------------------------------------------------
-    # 3) Dynamic slider UI
-    # ----------------------------------------------------------------
-    @output
-    @render.ui
-    def dynamic_slider():
-        """
-        Dynamically render the slider UI based on the (range, unit).
-        """
-        (range_min, range_max), unit_label = formatted_range()
-        # Prevent slider rendering if range is invalid
-        if range_max <= range_min:
-            return ui.markdown("⚠️ No data available to display slider.")
-
-        return ui.input_slider(
-            "first_job_waiting_time",
-            f"Waiting Time ({unit_label})",
-            min=range_min,
-            max=range_max,
-            value=(range_min, range_max),
-        )
-
-    # ----------------------------------------------------------------
-    # 4) Final reactive filter: (years + job_type + waiting_time)
-    # ----------------------------------------------------------------
-    @reactive.Calc
-    def dataset_data():
-        """
-        The fully filtered dataset used for tables & plots.
-        Filters:
-          1) year in input.years()
-          2) job_type in input.job_type()
-          3) waiting_time within the selected slider range
-        """
-        (range_min, range_max), unit_label = formatted_range()
-        slider_min, slider_max = input.first_job_waiting_time()
-
-        year, month, warning = selected_year_month()
-        if warning or year is None:
-            return dataset.iloc[0:0]
-
-        # Convert slider values back to seconds
-        if unit_label == "Hours":
-            min_sec = slider_min * 3600
-            max_sec = slider_max * 3600
-        elif unit_label == "Minutes":
-            min_sec = slider_min * 60
-            max_sec = slider_max * 60
-        else:
-            min_sec = slider_min
-            max_sec = slider_max
-
-        job_types = input.job_type()
-
-        df = dataset[(dataset["year"] == year) & (dataset["month"] == month)]
-        df = df[df["first_job_waiting_time"].between(min_sec, max_sec)]
-        df = df[df["job_type"].isin(job_types)]
-
-        queue_filter = input.queue_filter()
-        if queue_filter == "shared":
-            df = df[df["queue_type"] == "shared"]
-        elif queue_filter == "buyin":
-            df = df[df["queue_type"] == "buyin"]
-
-        return df[["job_type", "first_job_waiting_time", "day", "month", "job_number", "year", "slots"]]
-
-    # ----------------------------------------------------------------
-    # 5) Summary stats (min, max, mean, median, count)
-    # ----------------------------------------------------------------
-    @reactive.Calc
-    def waiting_time_stats():
-        """
-        Return a dict of summary statistics for the filtered data.
-        Times are stored in minutes for easy conversion.
-        """
-        df = dataset_data()
-        if df.empty:
-            return {"min": None, "max": None, "mean": None, "median": None, "count": 0}
-
-        waiting_times_sec = df["first_job_waiting_time"]
-        stats = {
-            "min": max(waiting_times_sec.min() / 60.0, 0),
-            "max": waiting_times_sec.max() / 60.0,
-            "mean": waiting_times_sec.mean() / 60.0,
-            "median": waiting_times_sec.median() / 60.0,
-            "count": df.shape[0],
-        }
-        return stats
-
-    # ----------------------------------------------------------------
-    # Value box outputs
-    # ----------------------------------------------------------------
-    @output
-    @render.text
-    def min_waiting_time():
-        stats = waiting_time_stats()
-        if stats["min"] is None:
-            return "No data available"
-        min_val = stats["min"]
-        return f"{min_val / 60:.1f} hours" if min_val > 60 else f"{min_val:.1f} min"
-
-    @output
-    @render.text
-    def max_waiting_time():
-        stats = waiting_time_stats()
-        if stats["max"] is None:
-            return "No data available"
-        max_val = stats["max"]
-        return f"{max_val / 60:.1f} hours" if max_val > 60 else f"{max_val:.1f} min"
-
-    @output
-    @render.text
-    def mean_waiting_time():
-        stats = waiting_time_stats()
-        if stats["mean"] is None:
-            return "No data available"
-        mean_val = stats["mean"]
-        return f"{mean_val / 60:.1f} hours" if mean_val > 60 else f"{mean_val:.1f} min"
-
-    @output
-    @render.text
-    def median_waiting_time():
-        stats = waiting_time_stats()
-        if stats["median"] is None:
-            return "No data available"
-        median_val = stats["median"]
-        return f"{median_val / 60:.1f} hours" if median_val > 60 else f"{median_val:.1f} min"
-
-    @output
-    @render.text
-    def job_count():
-        stats = waiting_time_stats()
-        return str(stats["count"])
-
-    
-    # ----------------------------------------------------------------
-    # PLOTS
-    # ----------------------------------------------------------------
-
-    # 1) Bar plot
-    @render_plotly
-    def all_jobs_barplot():
-        """
-        Median waiting time (minutes) by job type, with optional coloring.
-        Adds extra Y-axis padding for text labels above bars.
-        """
-        data = dataset_data()
-        if data.empty:
-            return go.Figure()
-
-        color_option = input.scatter_color()
-
-        # Convert to minutes
-        df = data.copy()
-        df["first_job_waiting_time"] = (df["first_job_waiting_time"] / 60).round(2)
-
-        # Compute medians
-        medians = (
-            df.groupby("job_type")["first_job_waiting_time"]
-            .median()
-            .reset_index()
-        )
-
-        # Create plot
-        fig = px.bar(
-            medians,
-            x="job_type",
-            y="first_job_waiting_time",
-            color=None if color_option == "none" else color_option,
-            labels={
-                "first_job_waiting_time": "Median Waiting Time (min)",
-                "job_type": "Job Type",
-            },
-            text=medians["first_job_waiting_time"].apply(lambda x: f"{x:.1f}" if x != 0 else "0")
-        )
-
-        # Adjust visuals
-        fig.update_traces(textposition='outside', textfont_size=12)
-
-        # Add padding to Y-axis so text isn't cut off
-        fig.update_layout(
-            yaxis=dict(range=[0, medians["first_job_waiting_time"].max() * 1.15])
-        )
-
-        return fig
-
-
-    
-    
-    @render_plotly
-    def job_waiting_time_by_date():
-        """
-        Box plot of waiting time by submission date (1–31), colored by year.
-        Uses minutes if most jobs wait under 60 minutes, otherwise hours.
-        Limits to 3500 points for performance.
-        Includes job_number in tooltips and displays outliers.
-        """
-        data = dataset_data()
-        if data.empty:
-            return go.Figure()
-
-        df = data.copy()
-
-        # Construct the 'submit_date' from year, month, and day
-        df["submit_date"] = pd.to_datetime({
-            "year": df["year"],
-            "month": df["month"].cat.codes + 1,
-            "day": df["day"]
-        }, errors="coerce")
-
-        df = df.dropna(subset=["submit_date"])
-        df["day"] = df["submit_date"].dt.day
-
-        # Determine whether to display in minutes or hours
-        waiting_time_secs = df["first_job_waiting_time"]
-        use_minutes = waiting_time_secs.quantile(0.9) <= 3600
-
-        if use_minutes:
-            df["job_waiting_time_display"] = waiting_time_secs / 60.0
-            y_label = "Job Waiting Time (min)"
-        else:
-            df["job_waiting_time_display"] = waiting_time_secs / 3600.0
-            y_label = "Job Waiting Time (hour)"
-
-        # Downsample to 3500 max points
-        max_points = 3500
-        if len(df) > max_points:
-            df = df.sample(n=max_points, random_state=42)
-
-        year, month, _ = selected_year_month()
-
-        fig = px.box(
-            df,
-            x="day",
-            y="job_waiting_time_display",
-            color="year",
-            labels={
-                "day": "Day of Month",
-                "job_waiting_time_display": y_label,
-                "job_number": "Job Number"
-            },
-            category_orders={"day": list(range(1, 32))},
-            hover_data=["job_number"]
-        )
-
-        # Show all individual outlier points
-        fig.update_traces(
-            boxpoints="outliers",  # ensures outliers are plotted
-            marker=dict(size=5, opacity=0.6, line=dict(width=1, color="white")),
-            jitter=0.3,
-            pointpos=0
-        )
-
-        fig.update_layout(
-            title={
-                "text": f"{year} {month}",
-                "x": 0.5,
-                "xanchor": "center"
-            },
-            boxmode="group",
-            showlegend=False,
-            xaxis=dict(
-                tickmode="linear",
-                dtick=1,
-                tickangle=0
-            )
-        )
-
-        return fig
-
-
-
-
     @reactive.Calc
     def selected_year_month():
         try:
             year = int(input.selected_year())
         except ValueError:
-            year = now.year  # fallback if invalid
-
+            year = now.year
         month = input.selected_month().capitalize()
-
-        # Check if the month is valid
         if month not in month_order:
-            return None, None, "Invalid month format. Please use 3-letter month (e.g., Jan, Feb)."
-
-        # Check for future data
-        latest_year = dataset["year"].max()
-        future_check = (
-            year > latest_year or
-            (year == latest_year and month_order.index(month) > dataset[dataset["year"] == year]["month"].cat.codes.max())
-        )
-
-        if future_check:
-            return year, month, "No data available for this month."
-
+            return None, None, "Invalid month format"
+        if year > dataset["year"].max():
+            return year, month, "No data available for this month"
         return year, month, None
 
+    @reactive.Calc
+    def dataset_year_filtered():
+        year, month, warning = selected_year_month()
+        if warning or year is None:
+            return dataset.iloc[0:0]
+        return dataset[dataset["year"] == year]
 
-    # ----------------------------------------------------------------
-    # "Select All" & "Unselect All" handlers
-    # ----------------------------------------------------------------
+    @reactive.Calc
+    def formatted_range():
+        df = dataset_year_filtered()
+        if df.empty:
+            return (0, 0), "Seconds"
+        min_time = max(df["first_job_waiting_time"].min(), 0)
+        max_time = df["first_job_waiting_time"].max()
+        if pd.isna(min_time) or pd.isna(max_time):
+            return (0, 0), "Seconds"
+        if max_time >= 3600:
+            return (int(min_time // 3600), int(max_time // 3600 + 1)), "Hours"
+        elif max_time >= 60:
+            return (int(min_time // 60), int(max_time // 60 + 1)), "Minutes"
+        else:
+            return (int(min_time), int(max_time + 1)), "Seconds"
+
+    @output
+    @render.ui
+    def dynamic_slider():
+        (range_min, range_max), unit = formatted_range()
+        if range_max <= range_min:
+            return ui.markdown("⚠️ No data available to display slider.")
+        return ui.input_slider("first_job_waiting_time", f"Waiting Time ({unit})", range_min, range_max, value=(range_min, range_max))
+
+    @reactive.Calc
+    def dataset_data():
+        (range_min, range_max), unit = formatted_range()
+        slider_min, slider_max = input.first_job_waiting_time()
+        year, month, warning = selected_year_month()
+        if warning or year is None:
+            return dataset.iloc[0:0]
+        if unit == "Hours":
+            min_sec, max_sec = slider_min * 3600, slider_max * 3600
+        elif unit == "Minutes":
+            min_sec, max_sec = slider_min * 60, slider_max * 60
+        else:
+            min_sec, max_sec = slider_min, slider_max
+        df = dataset[(dataset["year"] == year) & (dataset["month"] == month)]
+        df = df[df["first_job_waiting_time"].between(min_sec, max_sec)]
+        df = df[df["job_type"].isin(input.job_type())]
+        if input.queue_filter() == "shared":
+            df = df[df["queue_type"] == "shared"]
+        elif input.queue_filter() == "buyin":
+            df = df[df["queue_type"] == "buyin"]
+        return df
+
+    @reactive.Calc
+    def waiting_time_stats():
+        df = dataset_data()
+        if df.empty:
+            return {"min": None, "max": None, "mean": None, "median": None, "count": 0}
+        times = df["first_job_waiting_time"]
+        return {
+            "min": max(times.min() / 60, 0),
+            "max": times.max() / 60,
+            "mean": times.mean() / 60,
+            "median": times.median() / 60,
+            "count": len(df)
+        }
+
+    for stat in ["min", "max", "mean", "median"]:
+        @output(id=f"{stat}_waiting_time")
+        @render.text
+        def _(stat=stat):
+            val = waiting_time_stats()[stat]
+            if val is None:
+                return "No data"
+            return f"{val/60:.1f} hours" if val > 60 else f"{val:.1f} min"
+
+    @output
+    @render.text
+    def job_count():
+        return str(waiting_time_stats()["count"])
+
+    @render_plotly
+    def all_jobs_barplot():
+        df = dataset_data()
+        if df.empty:
+            return go.Figure()
+        df["first_job_waiting_time"] /= 60
+        medians = df.groupby("job_type")["first_job_waiting_time"].median().reset_index()
+        fig = px.bar(medians, x="job_type", y="first_job_waiting_time", text_auto=".1f")
+        fig.update_layout(yaxis_range=[0, medians["first_job_waiting_time"].max() * 1.15])
+        return fig
+
+    @render_plotly
+    def job_waiting_time_by_date():
+        df = dataset_data()
+        if df.empty:
+            return go.Figure()
+        df["submit_date"] = pd.to_datetime({
+            "year": df["year"],
+            "month": df["month"].cat.codes + 1,
+            "day": df["day"]
+        }, errors="coerce")
+        df.dropna(subset=["submit_date"], inplace=True)
+        df["day"] = df["submit_date"].dt.day
+        use_minutes = df["first_job_waiting_time"].quantile(0.9) <= 3600
+        df["job_waiting_time_display"] = df["first_job_waiting_time"] / (60 if use_minutes else 3600)
+        y_label = "Job Waiting Time (min)" if use_minutes else "Job Waiting Time (hour)"
+        if len(df) > 3500:
+            df = df.sample(n=3500, random_state=42)
+        year, month, _ = selected_year_month()
+        fig = px.box(df, x="day", y="job_waiting_time_display", color="year",
+                     hover_data=["job_number"], labels={"day": "Day of Month", "job_waiting_time_display": y_label})
+        fig.update_traces(boxpoints="outliers", jitter=0.3)
+        fig.update_layout(title={"text": f"{year} {month}", "x": 0.5}, xaxis=dict(dtick=1))
+        return fig
+
     @reactive.effect
     @reactive.event(input.select_all)
     def _():
-        all_job_types = list(dataset["job_type"].unique())
-        ui.update_checkbox_group("job_type", selected=all_job_types)
+        ui.update_checkbox_group("job_type", selected=list(dataset["job_type"].unique()))
 
     @reactive.effect
     @reactive.event(input.unselect_all)
@@ -583,6 +885,4 @@ def homepage_server(input, output, session):
     @render.ui
     def warning_message():
         _, _, warning = selected_year_month()
-        if warning:
-            return ui.markdown(f"**⚠️ Warning:** {warning}")
-        return None
+        return ui.markdown(f"**⚠️ Warning:** {warning}") if warning else None
