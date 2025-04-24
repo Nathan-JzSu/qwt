@@ -442,6 +442,8 @@ def homepage_server(input, output, session):
     @output
     @render_plotly
     def all_jobs_barplot():
+        _ = barplot_figure()  # Trigger dependencies (optional)
+        fig = go.Figure()
         return barplot_figure()
 
 
@@ -508,6 +510,8 @@ def homepage_server(input, output, session):
     @output
     @render_plotly
     def job_waiting_time_by_date():
+        _ = boxplot_figure()
+        fig = go.Figure()
         return boxplot_figure()
 
 
