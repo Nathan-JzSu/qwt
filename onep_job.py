@@ -44,7 +44,7 @@ ICONS = {
     "heart": fa.icon_svg("heart"),
     "count": fa.icon_svg("list"),
 }
-
+PAGE_ID = "oneP"
 # ---------------------------------------
 # UI DEFINITION
 # ---------------------------------------
@@ -89,11 +89,11 @@ def oneP_job_ui():
             style="display: flex; align-items: flex-end; margin-bottom: 1em; margin-top: 1em;"
         ),
         ui.layout_columns(
-            ui.value_box("Min Waiting Time", ui.output_text("min_waiting_time"), showcase=ICONS["min"]),
-            ui.value_box("Max Waiting Time", ui.output_text("max_waiting_time"), showcase=ICONS["max"]),
-            ui.value_box("Mean Waiting Time", ui.output_text("mean_waiting_time"), showcase=ICONS["speed"]),
-            ui.value_box("Median Waiting Time", ui.output_text("median_waiting_time"), showcase=ICONS["median"]),
-            ui.value_box("Number of Jobs", ui.output_text("job_count"), showcase=ICONS["count"]),
+            ui.value_box("Min Waiting Time", ui.output_text(f"{PAGE_ID}_min_waiting_time"), showcase=ICONS["min"]),
+            ui.value_box("Max Waiting Time", ui.output_text(f"{PAGE_ID}_max_waiting_time"), showcase=ICONS["max"]),
+            ui.value_box("Mean Waiting Time", ui.output_text(f"{PAGE_ID}_mean_waiting_time"), showcase=ICONS["speed"]),
+            ui.value_box("Median Waiting Time", ui.output_text(f"{PAGE_ID}_median_waiting_time"), showcase=ICONS["median"]),
+            ui.value_box("Number of Jobs", ui.output_text(f"{PAGE_ID}_job_count"), showcase=ICONS["count"]),
             fill=False,
         ),
         ui.layout_columns(
@@ -169,7 +169,7 @@ def oneP_job_server(input, output, session):
             count=len(waiting_times)
         )
 
-    @output
+    @output(id=f"{PAGE_ID}_min_waiting_time")
     @render.text
     def min_waiting_time():
         stats = waiting_time_stats()
@@ -177,7 +177,7 @@ def oneP_job_server(input, output, session):
             return "No data available"
         return f"{stats['min'] / 60:.1f} hours" if stats["min"] > 60 else f"{stats['min']:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_max_waiting_time")
     @render.text
     def max_waiting_time():
         stats = waiting_time_stats()
@@ -185,7 +185,7 @@ def oneP_job_server(input, output, session):
             return "No data available"
         return f"{stats['max'] / 60:.1f} hours" if stats["max"] > 60 else f"{stats['max']:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_mean_waiting_time")
     @render.text
     def mean_waiting_time():
         stats = waiting_time_stats()
@@ -193,7 +193,7 @@ def oneP_job_server(input, output, session):
             return "No data available"
         return f"{stats['mean'] / 60:.1f} hours" if stats["mean"] > 60 else f"{stats['mean']:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_median_waiting_time")
     @render.text
     def median_waiting_time():
         stats = waiting_time_stats()
@@ -201,7 +201,7 @@ def oneP_job_server(input, output, session):
             return "No data available"
         return f"{stats['median'] / 60:.1f} hours" if stats["median"] > 60 else f"{stats['median']:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_job_count")
     @render.text
     def job_count():
         stats = waiting_time_stats()

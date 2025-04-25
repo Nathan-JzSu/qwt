@@ -60,7 +60,7 @@ ICONS = {
 # UI 
 # --------------------------------------------------------------------
 now = datetime.datetime.now()
-
+PAGE_ID = "homepage"
 # custom value box to display icon (title output_id) horizontally
 def value_box_custom(title, output_id, icon):
     return ui.value_box(
@@ -87,7 +87,7 @@ def homepage_ui():
     """
     return ui.page_sidebar(
         ui.sidebar(
-            ui.output_ui("dynamic_slider"),  # Dynamically render slider
+            ui.output_ui(f"{PAGE_ID}_dynamic_slider"),  # Dynamically render slider
             ui.input_checkbox_group(
                 "job_type",
                 "Job Type",
@@ -99,7 +99,7 @@ def homepage_ui():
             ui.input_action_button("unselect_all", "Unselect All"),
             open="desktop",
         ),
-        ui.output_ui("warning_message"),
+        ui.output_ui(f"{PAGE_ID}_warning_message"),
         ui.div(  # <== this replaces the layout_columns for inputs
             ui.div(
                 ui.input_text(
@@ -166,11 +166,11 @@ def homepage_ui():
             }
         """),
         ui.layout_columns(
-            value_box_custom("Min Waiting Time", "min_waiting_time", ICONS["min"]),
-            value_box_custom("Max Waiting Time", "max_waiting_time", ICONS["max"]),
-            value_box_custom("Mean Waiting Time", "mean_waiting_time", ICONS["speed"]),
-            value_box_custom("Median Waiting Time", "median_waiting_time", ICONS["median"]),
-            value_box_custom("Number of Jobs", "job_count", ICONS["count"]),
+            value_box_custom("Min Waiting Time", f"{PAGE_ID}_min_waiting_time", ICONS["min"]),
+            value_box_custom("Max Waiting Time", f"{PAGE_ID}_max_waiting_time", ICONS["max"]),
+            value_box_custom("Mean Waiting Time", f"{PAGE_ID}_mean_waiting_time", ICONS["speed"]),
+            value_box_custom("Median Waiting Time", f"{PAGE_ID}_median_waiting_time", ICONS["median"]),
+            value_box_custom("Number of Jobs", f"{PAGE_ID}_job_count", ICONS["count"]),
             fill=False,
         ),
         ui.layout_columns(
@@ -180,7 +180,7 @@ def homepage_ui():
                     ui.popover(
                         ICONS["ellipsis"],
                         ui.input_radio_buttons(
-                            "scatter_color",
+                            "homepage_scatter_color",
                             None,
                             ["job_type", "none"],
                             inline=True,
@@ -269,7 +269,7 @@ def homepage_server(input, output, session):
     # ----------------------------------------------------------------
     # 3) Dynamic slider UI
     # ----------------------------------------------------------------
-    @output
+    @output(id=f"{PAGE_ID}_dynamic_slider")
     @render.ui
     def dynamic_slider():
         """
@@ -358,7 +358,7 @@ def homepage_server(input, output, session):
     # ----------------------------------------------------------------
     # Value box outputs
     # ----------------------------------------------------------------
-    @output
+    @output(id=f"{PAGE_ID}_min_waiting_time")
     @render.text
     def min_waiting_time():
         stats = waiting_time_stats()
@@ -367,7 +367,7 @@ def homepage_server(input, output, session):
         min_val = stats["min"]
         return f"{min_val / 60:.1f} hours" if min_val > 60 else f"{min_val:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_max_waiting_time")
     @render.text
     def max_waiting_time():
         stats = waiting_time_stats()
@@ -376,7 +376,7 @@ def homepage_server(input, output, session):
         max_val = stats["max"]
         return f"{max_val / 60:.1f} hours" if max_val > 60 else f"{max_val:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_mean_waiting_time")
     @render.text
     def mean_waiting_time():
         stats = waiting_time_stats()
@@ -385,7 +385,7 @@ def homepage_server(input, output, session):
         mean_val = stats["mean"]
         return f"{mean_val / 60:.1f} hours" if mean_val > 60 else f"{mean_val:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_median_waiting_time")
     @render.text
     def median_waiting_time():
         stats = waiting_time_stats()
@@ -394,7 +394,7 @@ def homepage_server(input, output, session):
         median_val = stats["median"]
         return f"{median_val / 60:.1f} hours" if median_val > 60 else f"{median_val:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_job_count")
     @render.text
     def job_count():
         stats = waiting_time_stats()
@@ -406,23 +406,30 @@ def homepage_server(input, output, session):
     # ----------------------------------------------------------------
 
     # 1) Bar plot
-    # Cache figure for barplot
-    @reactive.Calc
-    def barplot_figure():
+    @render_plotly
+    def all_jobs_barplot():
+        """
+        Median waiting time (minutes) by job type, with optional coloring.
+        Adds extra Y-axis padding for text labels above bars.
+        """
         data = dataset_data()
         if data.empty:
             return go.Figure()
 
-        color_option = input.scatter_color()
+        color_option = input.homepage_scatter_color()
+
+        # Convert to minutes
         df = data.copy()
         df["first_job_waiting_time"] = (df["first_job_waiting_time"] / 60).round(2)
 
+        # Compute medians
         medians = (
             df.groupby("job_type")["first_job_waiting_time"]
             .median()
             .reset_index()
         )
 
+        # Create plot
         fig = px.bar(
             medians,
             x="job_type",
@@ -435,45 +442,58 @@ def homepage_server(input, output, session):
             text=medians["first_job_waiting_time"].apply(lambda x: f"{x:.1f}" if x != 0 else "0")
         )
 
+        # Adjust visuals
         fig.update_traces(textposition='outside', textfont_size=12)
-        fig.update_layout(yaxis=dict(range=[0, medians["first_job_waiting_time"].max() * 1.15]))
+
+        # Add padding to Y-axis so text isn't cut off
+        fig.update_layout(
+            yaxis=dict(range=[0, medians["first_job_waiting_time"].max() * 1.15])
+        )
+
         return fig
 
-    @output
+
+    
+    
     @render_plotly
-    def all_jobs_barplot():
-        _ = barplot_figure()  # Trigger dependencies (optional)
-        fig = go.Figure()
-        return barplot_figure()
-
-
-    
-    
-    # Cache figure for box plot
-    @reactive.Calc
-    def boxplot_figure():
+    def job_waiting_time_by_date():
+        """
+        Box plot of waiting time by submission date (1–31), colored by year.
+        Uses minutes if most jobs wait under 60 minutes, otherwise hours.
+        Limits to 3500 points for performance.
+        Includes job_number in tooltips and displays outliers.
+        """
         data = dataset_data()
         if data.empty:
             return go.Figure()
 
         df = data.copy()
+
+        # Construct the 'submit_date' from year, month, and day
         df["submit_date"] = pd.to_datetime({
             "year": df["year"],
             "month": df["month"].cat.codes + 1,
             "day": df["day"]
         }, errors="coerce")
+
         df = df.dropna(subset=["submit_date"])
         df["day"] = df["submit_date"].dt.day
 
+        # Determine whether to display in minutes or hours
         waiting_time_secs = df["first_job_waiting_time"]
         use_minutes = waiting_time_secs.quantile(0.9) <= 3600
-        df["job_waiting_time_display"] = (
-            waiting_time_secs / 60.0 if use_minutes else waiting_time_secs / 3600.0
-        )
-        y_label = "Job Waiting Time (min)" if use_minutes else "Job Waiting Time (hour)"
 
-        if len(df) > 3500:
-            df = df.sample(n=3500, random_state=42)
+        if use_minutes:
+            df["job_waiting_time_display"] = waiting_time_secs / 60.0
+            y_label = "Job Waiting Time (min)"
+        else:
+            df["job_waiting_time_display"] = waiting_time_secs / 3600.0
+            y_label = "Job Waiting Time (hour)"
+
+        # Downsample to 3500 max points
+        max_points = 3500
+        if len(df) > max_points:
+            df = df.sample(n=max_points, random_state=42)
 
         year, month, _ = selected_year_month()
 
@@ -491,30 +511,30 @@ def homepage_server(input, output, session):
             hover_data=["job_number"]
         )
 
+        # Show all individual outlier points
         fig.update_traces(
-            boxpoints="outliers",
+            boxpoints="outliers",  # ensures outliers are plotted
             marker=dict(size=5, opacity=0.6, line=dict(width=1, color="white")),
             jitter=0.3,
             pointpos=0
         )
 
         fig.update_layout(
-            title={"text": f"{year} {month}", "x": 0.5, "xanchor": "center"},
+            title={
+                "text": f"{year} {month}",
+                "x": 0.5,
+                "xanchor": "center"
+            },
             boxmode="group",
             showlegend=False,
-            xaxis=dict(tickmode="linear", dtick=1, tickangle=0)
+            xaxis=dict(
+                tickmode="linear",
+                dtick=1,
+                tickangle=0
+            )
         )
 
         return fig
-
-    @output
-    @render_plotly
-    def job_waiting_time_by_date():
-        _ = boxplot_figure()
-        fig = go.Figure()
-        return boxplot_figure()
-
-
 
 
 
@@ -558,7 +578,7 @@ def homepage_server(input, output, session):
     def _():
         ui.update_checkbox_group("job_type", selected=[])
 
-    @output
+    @output(id=f"{PAGE_ID}_warning_message")
     @render.ui
     def warning_message():
         _, _, warning = selected_year_month()

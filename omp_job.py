@@ -70,7 +70,7 @@ ICONS = {
 # -------------------------------------------------------------------------
 # HELPER FUNCTIONS
 # -------------------------------------------------------------------------
-
+PAGE_ID = "omp_job"
 def get_expanded_cpu_selection(cpus_selected):
     """
     Given a list of CPU group labels (keys in cpu_ranges),
@@ -177,19 +177,19 @@ def omp_job_ui():
         # -------------------- Value Boxes --------------------
         ui.layout_columns(
             ui.value_box(
-                "Min Waiting Time", ui.output_text("min_waiting_time"), showcase=ICONS["min"]
+                "Min Waiting Time", ui.output_text(f"{PAGE_ID}_min_waiting_time"), showcase=ICONS["min"]
             ),
             ui.value_box(
-                "Max Waiting Time", ui.output_text("max_waiting_time"), showcase=ICONS["max"]
+                "Max Waiting Time", ui.output_text(f"{PAGE_ID}_max_waiting_time"), showcase=ICONS["max"]
             ),
             ui.value_box(
-                "Mean Waiting Time", ui.output_text("mean_waiting_time"), showcase=ICONS["speed"]
+                "Mean Waiting Time", ui.output_text(f"{PAGE_ID}_mean_waiting_time"), showcase=ICONS["speed"]
             ),
             ui.value_box(
-                "Median Waiting Time", ui.output_text("median_waiting_time"), showcase=ICONS["median"]
+                "Median Waiting Time", ui.output_text(f"{PAGE_ID}_median_waiting_time"), showcase=ICONS["median"]
             ),
             ui.value_box(
-                "Number of Jobs", ui.output_text("job_count"), showcase=ICONS["count"]
+                "Number of Jobs", ui.output_text(f"{PAGE_ID}_job_count"), showcase=ICONS["count"]
             ),
             fill=False,
         ),
@@ -207,7 +207,7 @@ def omp_job_ui():
                     ui.popover(
                         ICONS["ellipsis"],
                         ui.input_radio_buttons(
-                            "scatter_color",
+                            "omp_scatter_color",
                             None,
                             ["job_type", "none"],
                             inline=True,
@@ -287,7 +287,7 @@ def omp_job_server(input, output, session):
 
 
     # -------------------- Value Boxes: Summary Stats --------------------
-
+    @output(id=f"{PAGE_ID}_min_waiting_time")
     @render.text
     def min_waiting_time():
         """
@@ -300,6 +300,7 @@ def omp_job_server(input, output, session):
         min_wt = max(data.first_job_waiting_time.min() / 60, 0)  # convert sec -> min
         return f"{min_wt / 60:.1f} hours" if min_wt > 60 else f"{min_wt:.1f} min"
 
+    @output(id=f"{PAGE_ID}_max_waiting_time")
     @render.text
     def max_waiting_time():
         """
@@ -312,6 +313,7 @@ def omp_job_server(input, output, session):
         max_wt = data.first_job_waiting_time.max() / 60  # convert sec -> min
         return f"{max_wt / 60:.1f} hours" if max_wt > 60 else f"{max_wt:.1f} min"
 
+    @output(id=f"{PAGE_ID}_mean_waiting_time")
     @render.text
     def mean_waiting_time():
         """
@@ -324,6 +326,7 @@ def omp_job_server(input, output, session):
         mean_wt = data.first_job_waiting_time.mean() / 60  # convert sec -> min
         return f"{mean_wt / 60:.1f} hours" if mean_wt > 60 else f"{mean_wt:.1f} min"
 
+    @output(id=f"{PAGE_ID}_median_waiting_time")
     @render.text
     def median_waiting_time():
         """
@@ -336,6 +339,7 @@ def omp_job_server(input, output, session):
         med_wt = data.first_job_waiting_time.median() / 60  # convert sec -> min
         return f"{med_wt / 60:.1f} hours" if med_wt > 60 else f"{med_wt:.1f} min"
 
+    @output(id=f"{PAGE_ID}_job_count")
     @render.text
     def job_count():
         """

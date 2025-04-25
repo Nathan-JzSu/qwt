@@ -46,7 +46,7 @@ ICONS = {
 # ----------------------------------------------------------------
 # UI FOR THE MPI JOB PAGE
 # ----------------------------------------------------------------
-
+PAGE_ID = "mpi_job"
 def mpi_job_ui():
     """
     Builds the UI for the MPI Job page,
@@ -89,11 +89,11 @@ def mpi_job_ui():
             style="display: flex; align-items: flex-end; margin-bottom: 1em; margin-top: 1em;"
         ),
         ui.layout_columns(
-            ui.value_box("Min Waiting Time", ui.output_text("min_waiting_time"), showcase=ICONS["min"]),
-            ui.value_box("Max Waiting Time", ui.output_text("max_waiting_time"), showcase=ICONS["max"]),
-            ui.value_box("Mean Waiting Time", ui.output_text("mean_waiting_time"), showcase=ICONS["speed"]),
-            ui.value_box("Median Waiting Time", ui.output_text("median_waiting_time"), showcase=ICONS["median"]),
-            ui.value_box("Number of Jobs", ui.output_text("job_count"), showcase=ICONS["count"]),
+            ui.value_box("Min Waiting Time", ui.output_text(f"{PAGE_ID}_min_waiting_time"), showcase=ICONS["min"]),
+            ui.value_box("Max Waiting Time", ui.output_text(f"{PAGE_ID}_max_waiting_time"), showcase=ICONS["max"]),
+            ui.value_box("Mean Waiting Time", ui.output_text(f"{PAGE_ID}_mean_waiting_time"), showcase=ICONS["speed"]),
+            ui.value_box("Median Waiting Time", ui.output_text(f"{PAGE_ID}_median_waiting_time"), showcase=ICONS["median"]),
+            ui.value_box("Number of Jobs", ui.output_text(f"{PAGE_ID}_job_count"), showcase=ICONS["count"]),
             fill=False,
         ),
         ui.layout_columns(
@@ -108,7 +108,7 @@ def mpi_job_ui():
                     ui.popover(
                         ICONS["ellipsis"],
                         ui.input_radio_buttons(
-                            "scatter_color",
+                            "mpi_scatter_color",
                             None,
                             ["job_type", "none"],
                             inline=True,
@@ -194,7 +194,7 @@ def mpi_job_server(input, output, session):
             "count": df.shape[0],
         }
 
-    @output
+    @output(id=f"{PAGE_ID}_min_waiting_time")
     @render.text
     def min_waiting_time():
         s = stats()
@@ -202,7 +202,7 @@ def mpi_job_server(input, output, session):
             return "No data available"
         return f"{s['min'] / 60:.1f} hours" if s["min"] > 60 else f"{s['min']:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_max_waiting_time")
     @render.text
     def max_waiting_time():
         s = stats()
@@ -210,7 +210,7 @@ def mpi_job_server(input, output, session):
             return "No data available"
         return f"{s['max'] / 60:.1f} hours" if s["max"] > 60 else f"{s['max']:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_mean_waiting_time")
     @render.text
     def mean_waiting_time():
         s = stats()
@@ -218,7 +218,7 @@ def mpi_job_server(input, output, session):
             return "No data available"
         return f"{s['mean'] / 60:.1f} hours" if s["mean"] > 60 else f"{s['mean']:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_median_waiting_time")
     @render.text
     def median_waiting_time():
         s = stats()
@@ -226,7 +226,7 @@ def mpi_job_server(input, output, session):
             return "No data available"
         return f"{s['median'] / 60:.1f} hours" if s["median"] > 60 else f"{s['median']:.1f} min"
 
-    @output
+    @output(id=f"{PAGE_ID}_job_count")
     @render.text
     def job_count():
         return str(stats()["count"])
