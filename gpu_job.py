@@ -144,7 +144,7 @@ def gpu_job_ui():
 # SERVER LOGIC
 # --------------------------------------------------------------------
 
-def gpu_job_server(input, output, session):
+def gpu_job_server(input, output, session, active_page):
     """
     Server logic for GPU Job page:
       1) Filter dataset by selected years (and optionally job_type if needed).
@@ -239,6 +239,8 @@ def gpu_job_server(input, output, session):
 
     @render_plotly
     def GPU_barplot():
+        if active_page.get() != "GPU Job":
+            return go.Figure()  # blank figure
         df = gpu_data()
         if df.empty:
             return go.Figure()
@@ -306,6 +308,8 @@ def gpu_job_server(input, output, session):
         Line plot of median job waiting time (hours) per day of the selected month,
         comparing 'GPU = 1' vs 'GPU > 1'.
         """
+        if active_page.get() != "GPU Job":
+            return go.Figure()  # blank figure
         df = gpu_data()
         if df.empty or "day" not in df.columns:
             return go.Figure()

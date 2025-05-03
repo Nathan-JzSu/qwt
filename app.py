@@ -99,6 +99,8 @@
 
 # app = App(app_ui, server)
 
+
+
 from shiny import App, reactive, render, ui
 from homepage import homepage_ui, homepage_server
 from gpu_job import gpu_job_ui, gpu_job_server
@@ -106,7 +108,6 @@ from mpi_job import mpi_job_ui, mpi_job_server
 from omp_job import omp_job_ui, omp_job_server
 from onep_job import oneP_job_ui, oneP_job_server
 
-# 🔼 Make sure this is defined before you reference it
 PAGES = {
     "All Jobs": (homepage_ui, homepage_server),
     "GPU Job": (gpu_job_ui, gpu_job_server),
@@ -129,24 +130,27 @@ app_ui = ui.page_fluid(
 )
 
 def server(input, output, session):
-    current_page = reactive.Value("All Jobs")
+    active_page = reactive.Value("All Jobs")
 
     @reactive.effect
     def update_page():
-        current_page.set(input.selected_navset_bar())
+        selected = input.selected_navset_bar()
+        active_page.set(selected)
 
     @output
     @render.ui
     def page_content():
-        page = current_page.get()
-        page_ui, _ = PAGES.get(page, (lambda: ui.div("Page not found."), None))
+        page = active_page.get()
+        page_ui, _ = PAGES.get(page, (lambda: ui.div("Page not found"), None))
         return page_ui()
 
     @reactive.effect
-    def call_active_server():
-        page = current_page.get()
+    def mount_page_server():
+        page = active_page.get()
         _, page_server = PAGES.get(page, (None, None))
+
         if page_server:
-            page_server(input, output, session)
+            page_server(input, output, session, active_page)
+
 
 app = App(app_ui, server)

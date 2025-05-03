@@ -146,7 +146,7 @@ def mpi_job_ui():
 # SERVER LOGIC
 # ----------------------------------------------------------------
 
-def mpi_job_server(input, output, session):
+def mpi_job_server(input, output, session, active_page):
     print("MPI Job server function called")
 
     # ----------------------------------------------------------------
