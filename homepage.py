@@ -211,7 +211,7 @@ def homepage_ui():
 # SERVER LOGIC
 # --------------------------------------------------------------------
 
-def homepage_server(input, output, session, active_page):
+def homepage_server(input, output, session):
     """
     Server logic for homepage:
     - Reactive filtering based on years, job_type, and waiting_time

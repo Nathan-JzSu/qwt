@@ -239,7 +239,7 @@ def omp_job_ui():
 # SERVER LOGIC
 # -------------------------------------------------------------------------
 
-def omp_job_server(input, output, session, active_page):
+def omp_job_server(input, output, session):
     """
     Server logic for the OMP Job page.
 

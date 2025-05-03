@@ -121,7 +121,7 @@ def oneP_job_ui():
 # ---------------------------------------
 # SERVER LOGIC
 # ---------------------------------------
-def oneP_job_server(input, output, session, active_page):
+def oneP_job_server(input, output, session):
     """
     Server logic for the 1-p Job page.
     """
