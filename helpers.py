@@ -28,10 +28,13 @@ def check_shared_buyin(df):
     # Function to determine the queue type
     def determine_queue_type(row):
         qname = row['qname']
-        # Check if 'qname' exists in the queue dictionary and determine its type
-        if qname in queue_dict:
-            return 'buyin' if queue_dict[qname] == 'buyin' else 'shared'
-        return 'unknown'  # Default to 'unknown' if qname is not found in the dictionary
+        class_user = queue_dict.get(qname, None)
+        if class_user == 'buyin':
+            return 'buyin'
+        elif class_user == 'shared':
+            return 'shared'
+        else:
+            return 'unknown'
 
     # Apply the function to the DataFrame and create a new column
     df['queue_type'] = df.apply(determine_queue_type, axis=1)
