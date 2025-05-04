@@ -368,6 +368,8 @@ def omp_job_server(input, output, session):
         Create a bar plot showing median waiting time (min or hr) by CPU group for the filtered dataset.
         Auto-switches to hours if any group exceeds 100 minutes.
         """
+        if input.selected_navset_bar() != "OMP Job":
+            return None
         data = dataset_data().copy()
         if data.empty:
             print("No data available for bar plot in OMP Job")
@@ -430,6 +432,8 @@ def omp_job_server(input, output, session):
         """
         Line plot showing median job waiting time (minutes) by day for the selected year/month.
         """
+        if input.selected_navset_bar() != "OMP Job":
+            return None
         df = dataset_data()
         if df.empty or "day" not in df.columns:
             return go.Figure()

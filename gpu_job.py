@@ -240,7 +240,7 @@ def gpu_job_server(input, output, session):
     @render_plotly
     def GPU_barplot():
         if input.selected_navset_bar() != "GPU Job":
-            return go.Figure()
+            return None
         df = gpu_data()
         if df.empty:
             return go.Figure()
@@ -309,7 +309,7 @@ def gpu_job_server(input, output, session):
         comparing 'GPU = 1' vs 'GPU > 1'.
         """
         if input.selected_navset_bar() != "GPU Job":
-            return go.Figure()
+            return None
         df = gpu_data()
         if df.empty or "day" not in df.columns:
             return go.Figure()

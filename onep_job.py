@@ -213,6 +213,8 @@ def oneP_job_server(input, output, session):
         Shows top 6 queues with highest waiting time; others are grouped into 'others'.
         Converts to hours if any value > 100 min.
         """
+        if input.selected_navset_bar() != "1-p Job":
+            return None
         df = oneP_filtered_data()
         if df.empty:
             return go.Figure()
@@ -279,6 +281,8 @@ def oneP_job_server(input, output, session):
         """
         Line plot showing median job waiting time (minutes) by day for the selected year/month.
         """
+        if input.selected_navset_bar() != "1-p Job":
+            return None
         df = oneP_filtered_data()
         if df.empty or "day" not in df.columns:
             return go.Figure()
