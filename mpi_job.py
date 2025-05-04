@@ -255,7 +255,7 @@ def mpi_job_server(input, output, session):
     # ---- (A) Bar Plot: Median waiting time by job_type ----
     @render_plotly
     def mpi_barplot():
-        if input.selected_navset_bar() != "MPI Job":
+        if "selected_navset_bar" in input and input.selected_navset_bar() != "MPI Job":
             return None
         df = dataset_data()
         if df.empty:
@@ -336,7 +336,7 @@ def mpi_job_server(input, output, session):
         """
         Line plot of median job waiting time (minutes) for each day of the selected month.
         """
-        if input.selected_navset_bar() != "MPI Job":
+        if "selected_navset_bar" in input and input.selected_navset_bar() != "MPI Job":
             return None
         df = dataset_data()
         if df.empty or "day" not in df.columns:
@@ -395,7 +395,7 @@ def mpi_job_server(input, output, session):
         Create a box plot of job waiting time (hours) grouped into 10 CPU core ranges,
         with outliers preserved during downsampling.
         """
-        if input.selected_navset_bar() != "MPI Job":
+        if "selected_navset_bar" in input and input.selected_navset_bar() != "MPI Job":
             return None
         df = dataset_data()
         if df.empty:

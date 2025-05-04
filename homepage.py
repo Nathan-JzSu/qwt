@@ -412,8 +412,9 @@ def homepage_server(input, output, session):
         Median waiting time (minutes) by job type, with optional coloring.
         Adds extra Y-axis padding for text labels above bars.
         """
-        if input.selected_navset_bar() != "All Jobs":
+        if "selected_navset_bar" in input and input.selected_navset_bar() != "All Jobs":
             return None
+
         data = dataset_data()
         if data.empty:
             return go.Figure()
@@ -465,7 +466,7 @@ def homepage_server(input, output, session):
         Limits to 3500 points for performance.
         Includes job_number in tooltips and displays outliers.
         """
-        if input.selected_navset_bar() != "All Jobs":
+        if "selected_navset_bar" in input and input.selected_navset_bar() != "All Jobs":
             return None
         data = dataset_data()
         if data.empty:
