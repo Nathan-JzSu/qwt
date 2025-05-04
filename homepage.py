@@ -405,6 +405,7 @@ def homepage_server(input, output, session):
     # ----------------------------------------------------------------
 
     # 1) Bar plot
+    @output(id="all_jobs_barplot")
     @render_plotly
     def all_jobs_barplot():
         """
@@ -412,7 +413,7 @@ def homepage_server(input, output, session):
         Adds extra Y-axis padding for text labels above bars.
         """
         if input.selected_navset_bar() != "All Jobs":
-            return go.Figure()
+            return None
         data = dataset_data()
         if data.empty:
             return go.Figure()
@@ -465,7 +466,7 @@ def homepage_server(input, output, session):
         Includes job_number in tooltips and displays outliers.
         """
         if input.selected_navset_bar() != "All Jobs":
-            return go.Figure()
+            return None
         data = dataset_data()
         if data.empty:
             return go.Figure()
