@@ -301,7 +301,6 @@ def gpu_job_server(input, output, session):
         return fig
 
 
-    @output(id="gpu_job_waiting_time_by_month")
     @render_plotly
     def gpu_job_waiting_time_by_month():
         """
