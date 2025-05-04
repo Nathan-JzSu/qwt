@@ -137,7 +137,7 @@ def mpi_job_ui():
                 output_widget("job_waiting_time_by_cpu"),
                 full_screen=True
             ),
-            col_widths=[6, 6, 6, 6]
+            col_widths=[6, 6, 6]
         ),
         fillable=True,
     )

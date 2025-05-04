@@ -230,7 +230,6 @@ def omp_job_ui():
                 full_screen=True,
                 class_="mb-4" # add margin below 
             ),
-            col_widths=[6, 6]
         ),
         fillable=True,
     )

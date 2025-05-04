@@ -135,7 +135,6 @@ def gpu_job_ui():
                 output_widget("gpu_job_waiting_time_by_month"),
                 full_screen=True
             ),
-            col_widths=[6, 6]
         ),
         fillable=True,
     )
@@ -240,6 +239,8 @@ def gpu_job_server(input, output, session):
     @output(id="GPU_barplot")
     @render_plotly
     def GPU_barplot():
+        if input.selected_navset_bar() != "GPU Job":
+            return go.Figure()
         df = gpu_data()
         if df.empty:
             return go.Figure()
@@ -307,6 +308,8 @@ def gpu_job_server(input, output, session):
         Line plot of median job waiting time (hours) per day of the selected month,
         comparing 'GPU = 1' vs 'GPU > 1'.
         """
+        if input.selected_navset_bar() != "GPU Job":
+            return go.Figure()
         df = gpu_data()
         if df.empty or "day" not in df.columns:
             return go.Figure()

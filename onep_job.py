@@ -113,7 +113,6 @@ def oneP_job_ui():
                 output_widget("oneP_job_waiting_time_by_day"),
                 full_screen=True
             ),
-            col_widths=[6, 6]
         ),
         fillable=True,
     )
