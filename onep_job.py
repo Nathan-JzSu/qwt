@@ -48,6 +48,23 @@ PAGE_ID = "oneP"
 # ---------------------------------------
 # UI DEFINITION
 # ---------------------------------------
+def value_box_custom(title, output_id, icon):
+    return ui.value_box(
+        "",
+        ui.div(
+            ui.div(
+                ui.div(icon, class_="value-box-showcase custom-icon"),
+                ui.div(
+                    ui.div(title, class_="value-box-title"),
+                    ui.div(ui.output_text(output_id), class_="value-box-value"),
+                    class_="custom-text"
+                ),
+                class_="d-flex align-items-center gap-2"
+            )
+        )
+    )
+
+    
 def oneP_job_ui():
     """
     UI for the 1-p Job page.
@@ -88,12 +105,43 @@ def oneP_job_ui():
             ),
             style="display: flex; align-items: flex-end; margin-bottom: 1em; margin-top: 1em;"
         ),
+        ui.tags.style("""
+            .custom-icon {
+                align-items: center;
+                justify-content: center;
+            }
+
+            .custom-text {
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .bslib-value-box .value-box-title {
+                margin-top: 0;
+                margin-bottom: 0rem;
+            }
+            .bslib-value-box .value-box-value {
+                margin-bottom: 0rem;
+            }
+
+            .bslib-value-box .value-box-showcase,
+            .bslib-value-box .value-box-showcase > .html-fill-item {
+                width: unset !important;
+                padding: 0rem;
+            }
+            
+            .bslib-value-box .value-box-area {
+                padding: 0 !important;
+            }
+        """),
         ui.layout_columns(
-            ui.value_box("Min Waiting Time", ui.output_text(f"{PAGE_ID}_min_waiting_time"), showcase=ICONS["min"]),
-            ui.value_box("Max Waiting Time", ui.output_text(f"{PAGE_ID}_max_waiting_time"), showcase=ICONS["max"]),
-            ui.value_box("Mean Waiting Time", ui.output_text(f"{PAGE_ID}_mean_waiting_time"), showcase=ICONS["speed"]),
-            ui.value_box("Median Waiting Time", ui.output_text(f"{PAGE_ID}_median_waiting_time"), showcase=ICONS["median"]),
-            ui.value_box("Number of Jobs", ui.output_text(f"{PAGE_ID}_job_count"), showcase=ICONS["count"]),
+            value_box_custom("Min Waiting Time", f"{PAGE_ID}_min_waiting_time", ICONS["min"]),
+            value_box_custom("Max Waiting Time", f"{PAGE_ID}_max_waiting_time", ICONS["max"]),
+            value_box_custom("Mean Waiting Time", f"{PAGE_ID}_mean_waiting_time", ICONS["speed"]),
+            value_box_custom("Median Waiting Time", f"{PAGE_ID}_median_waiting_time", ICONS["median"]),
+            value_box_custom("Number of Jobs", f"{PAGE_ID}_job_count", ICONS["count"]),
             fill=False,
         ),
         ui.layout_columns(

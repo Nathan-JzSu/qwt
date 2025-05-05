@@ -486,7 +486,7 @@ def homepage_server(input, output, session):
 
         # Determine whether to display in minutes or hours
         waiting_time_secs = df["first_job_waiting_time"]
-        use_minutes = waiting_time_secs.quantile(0.9) <= 3600
+        use_minutes = waiting_time_secs.max() <= 5400  # 90 minutes
 
         if use_minutes:
             df["job_waiting_time_display"] = waiting_time_secs / 60.0
