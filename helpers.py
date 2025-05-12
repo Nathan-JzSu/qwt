@@ -22,22 +22,31 @@ def check_shared_buyin(df):
     queue_info_path = '/projectnb/scv/utilization/katia/queue_info.csv'
     queue_info = pd.read_csv(queue_info_path)
 
-    # Create a dictionary mapping 'queuename' to 'class_user'
-    queue_dict = dict(zip(queue_info['queuename'], queue_info['class_user']))
+    # # Create a dictionary mapping 'queuename' to 'class_user'
+    # queue_dict = dict(zip(queue_info['queuename'], queue_info['class_user']))
+    # # use class_own for GPU plots, MPI job, OMP, 1p page
 
-    # Function to determine the queue type
-    def determine_queue_type(row):
-        qname = row['qname']
-        class_user = queue_dict.get(qname, None)
-        if class_user == 'buyin':
-            return 'buyin'
-        elif class_user == 'shared':
-            return 'shared'
-        else:
-            return 'unknown'
+    # # Function to determine the queue type
+    # def determine_queue_type(row):
+    #     qname = row['qname']
+    #     class_user = queue_dict.get(qname, None)
+    #     if class_user == 'buyin':
+    #         return 'buyin'
+    #     elif class_user == 'shared':
+    #         return 'shared'
+    #     else:
+    #         return 'unknown'
 
-    # Apply the function to the DataFrame and create a new column
-    df['queue_type'] = df.apply(determine_queue_type, axis=1)
+    # # Apply the function to the DataFrame and create a new column
+    # df['queue_type'] = df.apply(determine_queue_type, axis=1)
+    # Create dictionaries for class_user and class_own based on queuename
+    
+    class_user_dict = dict(zip(queue_info['queuename'], queue_info['class_user']))
+    class_own_dict = dict(zip(queue_info['queuename'], queue_info['class_own']))
+
+    # Map class_user and class_own to the main DataFrame based on 'qname'
+    df['class_user'] = df['qname'].map(class_user_dict)
+    df['class_own'] = df['qname'].map(class_own_dict)
 
     return df
 

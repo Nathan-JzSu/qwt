@@ -215,9 +215,9 @@ def mpi_job_server(input, output, session):
 
         queue_filter = input.queue_filter_mpi()
         if queue_filter == "shared":
-            df = df[df["queue_type"] == "shared"]
+            df = df[df["class_own"] == "shared"]
         elif queue_filter == "buyin":
-            df = df[df["queue_type"] == "buyin"]
+            df = df[df["class_own"] == "buyin"]
 
         return df
 

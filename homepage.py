@@ -325,9 +325,9 @@ def homepage_server(input, output, session):
 
         queue_filter = input.queue_filter()
         if queue_filter == "shared":
-            df = df[df["queue_type"] == "shared"]
+            df = df[df["class_user"] == "shared"]
         elif queue_filter == "buyin":
-            df = df[df["queue_type"] == "buyin"]
+            df = df[df["class_user"] == "buyin"]
 
         return df[["job_type", "first_job_waiting_time", "day", "month", "job_number", "year", "slots"]]
 
