@@ -64,7 +64,7 @@ def value_box_custom(title, output_id, icon):
     )
 
 
-def mpi_job_ui():
+def mpi_job_ui(selected_year, selected_month):
     """
     Builds the UI for the MPI Job page,
     including year checkboxes, summary value boxes, and multiple plots.
@@ -76,7 +76,7 @@ def mpi_job_ui():
                 ui.input_text(
                     "selected_year_mpi",
                     "Enter Year",
-                    value=str(now.year),
+                    value=selected_year.get(),
                     placeholder="e.g., 2024"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -85,7 +85,7 @@ def mpi_job_ui():
                 ui.input_text(
                     "selected_month_mpi",
                     "Enter Month (e.g., Jan, Feb)",
-                    value=now.strftime("%b"),
+                    value=selected_month.get(),
                     placeholder="e.g., Jan"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -194,7 +194,7 @@ def mpi_job_ui():
 # SERVER LOGIC
 # ----------------------------------------------------------------
 
-def mpi_job_server(input, output, session):
+def mpi_job_server(input, output, session, selected_year, selected_month):
     print("MPI Job server function called")
 
     # ----------------------------------------------------------------
@@ -547,6 +547,13 @@ def mpi_job_server(input, output, session):
 
 
 
+    @reactive.effect
+    def sync_year():
+        selected_year.set(input.selected_year_mpi())
+
+    @reactive.effect
+    def sync_month():
+        selected_month.set(input.selected_month_mpi())
 
     @output
     @render.ui

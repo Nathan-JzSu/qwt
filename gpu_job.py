@@ -64,7 +64,7 @@ def value_box_custom(title, output_id, icon):
         )
     )
 
-def gpu_job_ui():
+def gpu_job_ui(selected_year, selected_month):
     return ui.page_fluid(
         # ------------------ Year Selection ------------------
         ui.output_ui("gpu_warning_message"),
@@ -73,7 +73,7 @@ def gpu_job_ui():
                 ui.input_text(
                     "selected_year_gpu",
                     "Enter Year",
-                    value=str(now.year),
+                    value=selected_year.get(),
                     placeholder="e.g., 2024"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -82,7 +82,7 @@ def gpu_job_ui():
                 ui.input_text(
                     "selected_month_gpu",
                     "Enter Month (e.g., Jan, Feb)",
-                    value=now.strftime("%b"),
+                    value=selected_month.get(),
                     placeholder="e.g., Jan"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -180,7 +180,7 @@ def gpu_job_ui():
 # SERVER LOGIC
 # --------------------------------------------------------------------
 
-def gpu_job_server(input, output, session):
+def gpu_job_server(input, output, session, selected_year, selected_month):
     """
     Server logic for GPU Job page:
       1) Filter dataset by selected years (and optionally job_type if needed).
@@ -405,7 +405,13 @@ def gpu_job_server(input, output, session):
         return fig
 
 
+    @reactive.effect
+    def sync_year():
+        selected_year.set(input.selected_year_gpu())
 
+    @reactive.effect
+    def sync_month():
+        selected_month.set(input.selected_month_gpu())
 
 
 

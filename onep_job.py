@@ -65,7 +65,7 @@ def value_box_custom(title, output_id, icon):
     )
 
     
-def oneP_job_ui():
+def oneP_job_ui(selected_year, selected_month):
     """
     UI for the 1-p Job page.
     """
@@ -76,7 +76,7 @@ def oneP_job_ui():
                 ui.input_text(
                     "selected_year_onep",
                     "Enter Year",
-                    value=str(now.year),
+                    value=selected_year.get(),
                     placeholder="e.g., 2024"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -85,7 +85,7 @@ def oneP_job_ui():
                 ui.input_text(
                     "selected_month_onep",
                     "Enter Month (e.g., Jan, Feb)",
-                    value=now.strftime("%b"),
+                    value=selected_month.get(),
                     placeholder="e.g., Jan"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -168,7 +168,7 @@ def oneP_job_ui():
 # ---------------------------------------
 # SERVER LOGIC
 # ---------------------------------------
-def oneP_job_server(input, output, session):
+def oneP_job_server(input, output, session, selected_year, selected_month):
     """
     Server logic for the 1-p Job page.
     """
@@ -393,3 +393,11 @@ def oneP_job_server(input, output, session):
             return ui.markdown("⚠️ No data available for this year and month.")
 
         return None
+
+    @reactive.effect
+    def sync_year():
+        selected_year.set(input.selected_year_onep())
+
+    @reactive.effect
+    def sync_month():
+        selected_month.set(input.selected_month_onep())

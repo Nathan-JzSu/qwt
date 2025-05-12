@@ -78,7 +78,7 @@ def value_box_custom(title, output_id, icon):
         )
     )
 
-def homepage_ui():
+def homepage_ui(selected_year, selected_month):
     """
     Build the UI for the homepage, including:
     - Sidebar with dynamic slider, job_type, and year checkbox groups
@@ -105,7 +105,7 @@ def homepage_ui():
                 ui.input_text(
                     "selected_year",
                     "Enter Year",
-                    value=str(now.year),
+                    value=selected_year.get(),
                     placeholder="e.g., 2024"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -114,7 +114,7 @@ def homepage_ui():
                 ui.input_text(
                     "selected_month",
                     "Enter Month (e.g., Jan, Feb)",
-                    value=now.strftime("%b"),
+                    value=selected_month.get(),
                     placeholder="e.g., Jan"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -210,7 +210,7 @@ def homepage_ui():
 # SERVER LOGIC
 # --------------------------------------------------------------------
 
-def homepage_server(input, output, session):
+def homepage_server(input, output, session, selected_year, selected_month):
     """
     Server logic for homepage:
     - Reactive filtering based on years, job_type, and waiting_time
@@ -590,3 +590,11 @@ def homepage_server(input, output, session):
         if warning:
             return ui.markdown(f"**⚠️ Warning:** {warning}")
         return None
+
+    @reactive.effect
+    def sync_year():
+        selected_year.set(input.selected_year())
+
+    @reactive.effect
+    def sync_month():
+        selected_month.set(input.selected_month())

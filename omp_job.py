@@ -116,7 +116,7 @@ def label_cpu_group(slot):
 # UI COMPONENT
 # -------------------------------------------------------------------------
 
-def omp_job_ui():
+def omp_job_ui(selected_year, selected_month):
     """
     Build the UI for the OMP Job page.
     Returns a Shiny UI object containing the input controls,
@@ -144,7 +144,7 @@ def omp_job_ui():
                 ui.input_text(
                     "selected_year_omp",
                     "Enter Year",
-                    value=str(now.year),
+                    value=selected_year.get(),
                     placeholder="e.g., 2024"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -153,7 +153,7 @@ def omp_job_ui():
                 ui.input_text(
                     "selected_month_omp",
                     "Enter Month (e.g., Jan, Feb)",
-                    value=now.strftime("%b"),
+                    value=selected_month.get(),
                     placeholder="e.g., Jan"
                 ),
                 style="margin-right: 20px; width: 250px;"
@@ -276,7 +276,7 @@ def omp_job_ui():
 # SERVER LOGIC
 # -------------------------------------------------------------------------
 
-def omp_job_server(input, output, session):
+def omp_job_server(input, output, session, selected_year, selected_month):
     """
     Server logic for the OMP Job page.
 
@@ -596,3 +596,11 @@ def omp_job_server(input, output, session):
             return ui.markdown("⚠️ No data available for this year and month.")
 
         return None
+
+    @reactive.effect
+    def sync_year():
+        selected_year.set(input.selected_year_omp())
+
+    @reactive.effect
+    def sync_month():
+        selected_month.set(input.selected_month_omp())

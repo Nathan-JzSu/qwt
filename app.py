@@ -65,6 +65,9 @@ app_ui = ui.page_fluid(
 
 # app = App(app_ui, server)
 
+selected_year = reactive.Value("2025")
+selected_month = reactive.Value("May")
+
 def server(input, output, session):
     current_page = reactive.Value("All Jobs")
 
@@ -73,11 +76,11 @@ def server(input, output, session):
         current_page.set(input.selected_navset_bar())
 
     # Initialize all server logic once
-    homepage_server(input, output, session)
-    gpu_job_server(input, output, session)
-    mpi_job_server(input, output, session)
-    omp_job_server(input, output, session)
-    oneP_job_server(input, output, session)
+    homepage_server(input, output, session, selected_year, selected_month)
+    gpu_job_server(input, output, session, selected_year, selected_month)
+    mpi_job_server(input, output, session, selected_year, selected_month)
+    omp_job_server(input, output, session, selected_year, selected_month)
+    oneP_job_server(input, output, session, selected_year, selected_month)
 
     # Only show active page
     @output
@@ -89,11 +92,11 @@ def server(input, output, session):
             return "display: block;" if active == page_name else "display: none;"
 
         return ui.tags.div(
-            ui.tags.div(homepage_ui(), id="all-jobs", style=visible("All Jobs")),
-            ui.tags.div(gpu_job_ui(), id="gpu-job", style=visible("GPU Job")),
-            ui.tags.div(mpi_job_ui(), id="mpi-job", style=visible("MPI Job")),
-            ui.tags.div(omp_job_ui(), id="omp-job", style=visible("OMP Job")),
-            ui.tags.div(oneP_job_ui(), id="onep-job", style=visible("1-p Job")),
+            ui.tags.div(homepage_ui(selected_year, selected_month), id="all-jobs", style=visible("All Jobs")),
+            ui.tags.div(gpu_job_ui(selected_year, selected_month), id="gpu-job", style=visible("GPU Job")),
+            ui.tags.div(mpi_job_ui(selected_year, selected_month), id="mpi-job", style=visible("MPI Job")),
+            ui.tags.div(omp_job_ui(selected_year, selected_month), id="omp-job", style=visible("OMP Job")),
+            ui.tags.div(oneP_job_ui(selected_year, selected_month), id="onep-job", style=visible("1-p Job")),
         )
 
 
