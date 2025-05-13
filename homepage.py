@@ -232,7 +232,7 @@ def homepage_server(input, output, session, selected_year, selected_month):
         year, month, warning = selected_year_month()
         if warning or year is None:
             return dataset.iloc[0:0]  # return empty DataFrame
-        return dataset[dataset["year"] == year]
+        return dataset[(dataset["year"] == year) & (dataset["month"] == month)]
 
 
     # ----------------------------------------------------------------
