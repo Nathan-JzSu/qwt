@@ -8,7 +8,7 @@ def determine_job_type(df):
             return 'GPU'
         elif row['slots'] == 1:
             return '1-p'
-        elif row['granted_pe'] is not None and any(keyword in row['granted_pe'] for keyword in ['tasks_per_node', 'mpi']):
+        elif row['granted_pe'] is not None and any(keyword in row['granted_pe'] for keyword in ['tasks_per_node', 'mpi_', 'mpi128']):
             return 'MPI'
         else:
             return 'OMP'

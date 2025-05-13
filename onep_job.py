@@ -147,7 +147,7 @@ def oneP_job_ui(selected_year, selected_month):
         ui.layout_columns(
             ui.card(
                 ui.card_header(
-                    "Median Waiting Time vs Queue",
+                    "Waiting Time vs Queue",
                     class_="d-flex justify-content-between align-items-center"
                 ),
                 output_widget("oneP_waiting_time_vs_queue"),
@@ -193,7 +193,7 @@ def oneP_job_server(input, output, session, selected_year, selected_month):
         if queue_filter == "shared":
             df = df[df["class_own"] == "shared"]
         elif queue_filter == "buyin":
-            df = df[df["class_own"] == "buyin"]
+            df = df[(df["class_own"] == "buyin") & (df["class_user"] == "buyin")]
 
         return df
 

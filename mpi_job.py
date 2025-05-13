@@ -152,7 +152,7 @@ def mpi_job_ui(selected_year, selected_month):
             # ),
             ui.card(
                 ui.card_header(
-                    "Waiting Time vs Queue Type",
+                    "Waiting Time vs Queue",
                     ui.popover(
                         ICONS["ellipsis"],
                         ui.input_radio_buttons(
@@ -217,7 +217,7 @@ def mpi_job_server(input, output, session, selected_year, selected_month):
         if queue_filter == "shared":
             df = df[df["class_own"] == "shared"]
         elif queue_filter == "buyin":
-            df = df[df["class_own"] == "buyin"]
+            df = df[(df["class_own"] == "buyin") & (df["class_user"] == "buyin")]
 
         return df
 

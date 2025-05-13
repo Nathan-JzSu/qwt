@@ -241,11 +241,30 @@ def omp_job_ui(selected_year, selected_month):
             # ),
             ui.card(
                 ui.card_header(
+                    "Waiting Time vs Queue",
+                    ui.popover(
+                        ICONS["ellipsis"],
+                        ui.input_radio_buttons(
+                            "omp_scatter_color1",
+                            None,
+                            ["job_type", "none"],
+                            inline=True,
+                        ),
+                        title="Add a color variable",
+                        placement="top",
+                    ),
+                    class_="d-flex justify-content-between align-items-center",
+                ),
+                output_widget("OMP_waiting_time_vs_queue"),
+                full_screen=True
+            ),
+            ui.card(
+                ui.card_header(
                     "Median Waiting Time by CPU Group",
                     ui.popover(
                         ICONS["ellipsis"],
                         ui.input_radio_buttons(
-                            "omp_scatter_color",
+                            "omp_scatter_color2",
                             None,
                             ["job_type", "none"],
                             inline=True,
@@ -268,6 +287,7 @@ def omp_job_ui(selected_year, selected_month):
                 full_screen=True,
                 class_="mb-4" # add margin below 
             ),
+            col_widths=[6, 6, 6]
         ),
         fillable=True,
     )
@@ -317,7 +337,7 @@ def omp_job_server(input, output, session, selected_year, selected_month):
         if queue_filter == "shared":
             df = df[df["class_own"] == "shared"]
         elif queue_filter == "buyin":
-            df = df[df["class_own"] == "buyin"]
+            df = df[(df["class_own"] == "buyin") & (df["class_user"] == "buyin")]
 
         return df
 
@@ -398,6 +418,78 @@ def omp_job_server(input, output, session, selected_year, selected_month):
         df.rename(columns={'first_job_waiting_time': 'first_job_waiting_time (min)'}, 
                   inplace=True)
         return render.DataGrid(df)
+
+
+    # -------------------- Plot: Bar Plot of Median Waiting Time by Job Type --------------------
+    @render_plotly
+    def OMP_waiting_time_vs_queue():
+        """
+        Bar plot of median waiting time by job type.
+        Shows top 6 queues with highest waiting time; others are grouped into 'others'.
+        Converts to hours if any value > 100 min.
+        """
+        if input.selected_navset_bar() != "OMP Job":
+            return None
+        data = dataset_data().copy()
+        if data.empty:
+            print("No data available for bar plot in OMP Job")
+            return go.Figure()
+
+        df_plot = data.copy()
+
+        # Clean job_type name
+        df_plot["job_type"] = df_plot["job_type"].str.replace("OMP ", "", regex=False)
+
+        # Convert to minutes
+        df_plot["waiting_time_min"] = df_plot["first_job_waiting_time"] / 60
+
+        # Compute median waiting time per job_type
+        medians = df_plot.groupby("job_type")["waiting_time_min"].median().reset_index()
+
+        # Identify top 6 job types with highest median
+        top6 = medians.nlargest(6, "waiting_time_min")["job_type"].tolist()
+
+        # Group others under "others"
+        df_plot["job_type_grouped"] = df_plot["job_type"].apply(lambda x: x if x in top6 else "others")
+
+        # Recalculate medians with grouped data
+        grouped = (
+            df_plot.groupby("job_type_grouped")["waiting_time_min"]
+            .median()
+            .reset_index()
+            .sort_values(by="waiting_time_min", ascending=True)
+        )
+
+        # Decide unit and format
+        convert_to_hours = grouped["waiting_time_min"].max() > 100
+        unit = "hr" if convert_to_hours else "min"
+        grouped["waiting_time_display"] = grouped["waiting_time_min"].apply(
+            lambda x: round(x / 60, 1) if convert_to_hours else round(x, 1)
+        )
+        y_values = grouped["waiting_time_display"]
+
+        # Build the bar plot
+        fig = px.bar(
+            grouped,
+            x="job_type_grouped",
+            y=y_values,
+            text=[f"{val} {unit}" for val in y_values],
+            labels={
+                "job_type_grouped": "Job Type",
+                "waiting_time_display": f"Median Waiting Time ({unit})"
+            },
+        )
+
+        fig.update_layout(
+            xaxis_title="Queue Type",
+            yaxis_title=f"Median Waiting Time ({unit})",
+            yaxis=dict(range=[0, max(y_values.max() * 1.1, 1)]),
+            uniformtext_minsize=8,
+            uniformtext_mode='hide',
+            title={"x": 0.5, "xanchor": "center"}
+        )
+
+        return fig
 
     # -------------------- Plot: Bar Plot of Median Waiting Time by CPU Group --------------------
     @render_plotly

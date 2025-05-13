@@ -206,7 +206,7 @@ def gpu_job_server(input, output, session, selected_year, selected_month):
         if queue_filter == "shared":
             df = df[df["class_own"] == "shared"]
         elif queue_filter == "buyin":
-            df = df[df["class_own"] == "buyin"]
+            df = df[(df["class_own"] == "buyin") & (df["class_user"] == "buyin")]
 
         return df
 
