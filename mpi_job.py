@@ -6,9 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import datetime
 
-# ----------------------------------------------------------------
 # DATA LOADING & PREP
-# ----------------------------------------------------------------
 now = datetime.datetime.now()
 dataset = pd.read_feather("/projectnb/rcs-intern/Jiazheng/accounting/ShinyApp_Data_MPI.feather")
 
@@ -43,9 +41,7 @@ ICONS = {
     "count": fa.icon_svg("list"),
 }
 
-# ----------------------------------------------------------------
 # UI FOR THE MPI JOB PAGE
-# ----------------------------------------------------------------
 PAGE_ID = "mpi_job"
 def value_box_custom(title, output_id, icon):
     return ui.value_box(
@@ -65,10 +61,6 @@ def value_box_custom(title, output_id, icon):
 
 
 def mpi_job_ui(selected_year, selected_month):
-    """
-    Builds the UI for the MPI Job page,
-    including year checkboxes, summary value boxes, and multiple plots.
-    """
     return ui.page_fluid(
         ui.output_ui("mpi_warning_message"),
         ui.div(
@@ -145,11 +137,6 @@ def mpi_job_ui(selected_year, selected_month):
             fill=False,
         ),
         ui.layout_columns(
-            # ui.card(
-            #     ui.card_header("Dataset Data"),
-            #     ui.output_data_frame("displayTable"),
-            #     full_screen=True
-            # ),
             ui.card(
                 ui.card_header(
                     "Waiting Time vs Queue",
@@ -190,16 +177,11 @@ def mpi_job_ui(selected_year, selected_month):
         fillable=True,
     )
 
-# ----------------------------------------------------------------
 # SERVER LOGIC
-# ----------------------------------------------------------------
-
 def mpi_job_server(input, output, session, selected_year, selected_month):
     print("MPI Job server function called")
 
-    # ----------------------------------------------------------------
     # 1) Reactive data filter by selected years (and possibly more in future)
-    # ----------------------------------------------------------------
     @reactive.calc
     def dataset_data():
         try:
@@ -225,10 +207,6 @@ def mpi_job_server(input, output, session, selected_year, selected_month):
     # SUMMARY STATS (MIN, MAX, MEAN, MEDIAN, COUNT)
     @reactive.calc
     def stats():
-        """
-        Calculate key summary statistics (in minutes) for the filtered data.
-        Returns a dict {min, max, mean, median, count}.
-        """
         df = dataset_data()
         if df.empty:
             return {"min": None, "max": None, "mean": None, "median": None, "count": 0}
@@ -279,14 +257,9 @@ def mpi_job_server(input, output, session, selected_year, selected_month):
     def job_count():
         return str(stats()["count"])
 
-    # ----------------------------------------------------------------
     # 4) OPTIONAL DATA GRID (unused in your UI, but here for reference)
-    # ----------------------------------------------------------------
     @render.data_frame
     def table():
-        """
-        Same data but displayed in a different way if needed—e.g., DataGrid.
-        """
         df = dataset_data()
         if df.empty:
             return pd.DataFrame()
@@ -296,11 +269,9 @@ def mpi_job_server(input, output, session, selected_year, selected_month):
         df_mod.rename(columns={"first_job_waiting_time": "first_job_waiting_time (min)"}, inplace=True)
         return render.DataGrid(df_mod)
 
-    # ----------------------------------------------------------------
     # 5) PLOTS
-    # ----------------------------------------------------------------
 
-    # ---- (A) Bar Plot: Median waiting time by job_type ----
+    #Bar Plot: Median waiting time by job_type ----
     @render_plotly
     def mpi_barplot():
         if "selected_navset_bar" in input and input.selected_navset_bar() != "MPI Job":
@@ -378,12 +349,9 @@ def mpi_job_server(input, output, session, selected_year, selected_month):
 
 
 
-    # ---- (B) Box Plot: Job Waiting Time by day per month ----
+    # Box Plot: Job Waiting Time by day per month ----
     @render_plotly
     def mpi_job_waiting_time_by_day():
-        """
-        Line plot of median job waiting time (minutes) for each day of the selected month.
-        """
         if "selected_navset_bar" in input and input.selected_navset_bar() != "MPI Job":
             return None
         df = dataset_data()
@@ -436,13 +404,9 @@ def mpi_job_server(input, output, session, selected_year, selected_month):
 
 
 
-    # ---- (C) Box Plot: Job Waiting Time by CPU Cores ----
+    # Box Plot: Job Waiting Time by CPU Cores ----
     @render_plotly
     def job_waiting_time_by_cpu():
-        """
-        Create a box plot of job waiting time (hours) grouped into 10 CPU core ranges,
-        with outliers preserved during downsampling.
-        """
         if "selected_navset_bar" in input and input.selected_navset_bar() != "MPI Job":
             return None
         df = dataset_data()

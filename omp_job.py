@@ -67,9 +67,7 @@ ICONS = {
     "count": fa.icon_svg("list"),
 }
 
-# -------------------------------------------------------------------------
 # HELPER FUNCTIONS
-# -------------------------------------------------------------------------
 PAGE_ID = "omp_job"
 def value_box_custom(title, output_id, icon):
     return ui.value_box(
@@ -89,10 +87,6 @@ def value_box_custom(title, output_id, icon):
 
 
 def get_expanded_cpu_selection(cpus_selected):
-    """
-    Given a list of CPU group labels (keys in cpu_ranges),
-    return a list of all individual CPU cores belonging to those groups.
-    """
     if not cpus_selected:
         return []
     # Collect CPU cores from the cpu_ranges dictionary
@@ -103,41 +97,14 @@ def get_expanded_cpu_selection(cpus_selected):
     return sorted(expanded_cpus_selected)
 
 def label_cpu_group(slot):
-    """
-    Given an integer CPU slot, return the corresponding
-    CPU group label (e.g., "2-4", "5-8", "other", etc.).
-    """
     for key, cpu_list in cpu_ranges.items():
         if slot in cpu_list:
             return key
     return "other"
 
-# -------------------------------------------------------------------------
 # UI COMPONENT
-# -------------------------------------------------------------------------
-
 def omp_job_ui(selected_year, selected_month):
-    """
-    Build the UI for the OMP Job page.
-    Returns a Shiny UI object containing the input controls,
-    value boxes, data table, and plots.
-    """
     return ui.page_fluid(
-        # -------------------- Filters --------------------
-        # ui.input_checkbox_group(
-        #     "years",
-        #     "Select Year(s)",
-        #     list(range(2013, 2026)),  # from 2013 to 2024
-        #     selected=[2024],          # default selected year
-        #     inline=True
-        # ),
-        # ui.input_checkbox_group(
-        #     "months",
-        #     "Select Month(s)",
-        #     month_order,
-        #     selected=['Jan'],
-        #     inline=True
-        # ),
         ui.output_ui("omp_warning_message"),
         ui.div(
             ui.div(
@@ -222,7 +189,6 @@ def omp_job_ui(selected_year, selected_month):
             class_="mb-3"  # Add margin below the row
         ),
 
-        # -------------------- Value Boxes --------------------
         ui.layout_columns(
             value_box_custom("Min Waiting Time", f"{PAGE_ID}_min_waiting_time", ICONS["min"]),
             value_box_custom("Max Waiting Time", f"{PAGE_ID}_max_waiting_time", ICONS["max"]),
@@ -232,13 +198,7 @@ def omp_job_ui(selected_year, selected_month):
             fill=False,
         ),
 
-        # -------------------- Main Content (Data Table & Plots) --------------------
         ui.layout_columns(
-            # ui.card(
-            #     ui.card_header("Dataset Data"),
-            #     ui.output_data_frame("displayTable"),  # Display the filtered data
-            #     full_screen=True
-            # ),
             ui.card(
                 ui.card_header(
                     "Waiting Time vs Queue",
@@ -292,29 +252,12 @@ def omp_job_ui(selected_year, selected_month):
         fillable=True,
     )
 
-# -------------------------------------------------------------------------
 # SERVER LOGIC
-# -------------------------------------------------------------------------
-
 def omp_job_server(input, output, session, selected_year, selected_month):
-    """
-    Server logic for the OMP Job page.
-
-    - Reactive dataset filter based on selected years, months, and CPU cores.
-    - Various reactive renderers for data table and Plotly plots.
-    - Handlers to select/unselect CPU cores.
-    """
     print("OMP Job server function called")
 
     @reactive.calc
     def dataset_data():
-        """
-        Reactive expression to filter the dataset based on:
-        - selected year (text)
-        - selected month (text)
-        - selected queue type
-        - selected CPUs (checkbox group)
-        """
         try:
             year = int(input.selected_year_omp())
         except ValueError:
@@ -342,14 +285,9 @@ def omp_job_server(input, output, session, selected_year, selected_month):
         return df
 
 
-
-    # -------------------- Value Boxes: Summary Stats --------------------
     @output(id=f"{PAGE_ID}_min_waiting_time")
     @render.text
     def min_waiting_time():
-        """
-        Compute the minimum waiting time for the filtered data (in minutes or hours).
-        """
         data = dataset_data()
         if data.empty:
             return "No data available"
@@ -360,9 +298,6 @@ def omp_job_server(input, output, session, selected_year, selected_month):
     @output(id=f"{PAGE_ID}_max_waiting_time")
     @render.text
     def max_waiting_time():
-        """
-        Compute the maximum waiting time for the filtered data (in minutes or hours).
-        """
         data = dataset_data()
         if data.empty:
             return "No data available"
@@ -373,9 +308,6 @@ def omp_job_server(input, output, session, selected_year, selected_month):
     @output(id=f"{PAGE_ID}_mean_waiting_time")
     @render.text
     def mean_waiting_time():
-        """
-        Compute the mean waiting time for the filtered data (in minutes or hours).
-        """
         data = dataset_data()
         if data.empty:
             return "No data available"
@@ -386,9 +318,6 @@ def omp_job_server(input, output, session, selected_year, selected_month):
     @output(id=f"{PAGE_ID}_median_waiting_time")
     @render.text
     def median_waiting_time():
-        """
-        Compute the median waiting time for the filtered data (in minutes or hours).
-        """
         data = dataset_data()
         if data.empty:
             return "No data available"
@@ -399,20 +328,13 @@ def omp_job_server(input, output, session, selected_year, selected_month):
     @output(id=f"{PAGE_ID}_job_count")
     @render.text
     def job_count():
-        """
-        Compute the total number of jobs in the filtered dataset.
-        """
         data = dataset_data()
         return f"{data.shape[0]}"
 
-    # -------------------- Additional Data Frame (not currently used) --------------------
 
+    # this is table frame. Not currently in use, but could be useful in future
     @render.data_frame
     def table():
-        """
-        An additional data frame renderer (if you need it). Converts waiting time
-        to minutes with 2 decimal places, then returns the DataGrid object.
-        """
         df = dataset_data().copy()
         df['first_job_waiting_time'] = (df['first_job_waiting_time'] / 60).round(2)
         df.rename(columns={'first_job_waiting_time': 'first_job_waiting_time (min)'}, 
@@ -420,14 +342,8 @@ def omp_job_server(input, output, session, selected_year, selected_month):
         return render.DataGrid(df)
 
 
-    # -------------------- Plot: Bar Plot of Median Waiting Time by Job Type --------------------
     @render_plotly
     def OMP_waiting_time_vs_queue():
-        """
-        Bar plot of median waiting time by job type.
-        Shows top 6 queues with highest waiting time; others are grouped into 'others'.
-        Converts to hours if any value > 100 min.
-        """
         if input.selected_navset_bar() != "OMP Job":
             return None
         data = dataset_data().copy()
@@ -491,13 +407,8 @@ def omp_job_server(input, output, session, selected_year, selected_month):
 
         return fig
 
-    # -------------------- Plot: Bar Plot of Median Waiting Time by CPU Group --------------------
     @render_plotly
     def omp_barplot():
-        """
-        Create a bar plot showing median waiting time (min or hr) by CPU group for the filtered dataset.
-        Auto-switches to hours if any group exceeds 100 minutes.
-        """
         if input.selected_navset_bar() != "OMP Job":
             return None
         data = dataset_data().copy()
@@ -556,12 +467,8 @@ def omp_job_server(input, output, session, selected_year, selected_month):
         return fig
 
 
-    # -------------------- Plot: Box Plot of Job Waiting Time by Month & Year --------------------
     @render_plotly
     def omp_job_waiting_time_by_day():
-        """
-        Line plot showing median job waiting time (minutes) by day for the selected year/month.
-        """
         if input.selected_navset_bar() != "OMP Job":
             return None
         df = dataset_data()
@@ -617,7 +524,6 @@ def omp_job_server(input, output, session, selected_year, selected_month):
 
 
 
-    # -------------------- Reactive Effects & Event Handling --------------------
 
     @reactive.effect
     @reactive.event(input.select_all)
@@ -628,18 +534,11 @@ def omp_job_server(input, output, session, selected_year, selected_month):
     @reactive.effect
     @reactive.event(input.unselect_all)
     def _():
-        """
-        Unselect all job_type checkboxes
-        """
         ui.update_checkbox_group("job_type", selected=[])
 
     @reactive.effect
     @reactive.event(input.cpus)
     def _():
-        """
-        This effect triggers whenever 'cpus' selection changes.
-        to CPU selection changes
-        """
         selected_cpus = input.cpus()
         filtered_jobs = dataset[dataset['slots'].isin(get_expanded_cpu_selection(selected_cpus))]
         # Do something with filtered_jobs if needed
@@ -647,9 +546,6 @@ def omp_job_server(input, output, session, selected_year, selected_month):
     @reactive.effect
     @reactive.event(input.select_all_cpus)
     def _():
-        """
-        Select all CPU group labels and set the month selection to all months.
-        """
         available_cpus = sorted(dataset.slots.unique().tolist())
         selected_labels = []
         # For each label in cpu_ranges, check if at least one CPU in that range is in 'available_cpus'
@@ -665,9 +561,6 @@ def omp_job_server(input, output, session, selected_year, selected_month):
     @reactive.effect
     @reactive.event(input.unselect_all_cpus)
     def _():
-        """
-        Unselect all CPU group labels and months.
-        """
         ui.update_checkbox_group("cpus", selected=[])
         ui.update_checkbox_group("months", selected=[])
 

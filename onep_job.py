@@ -6,9 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import datetime
 
-# ---------------------------------------
 # DATA LOADING
-# ---------------------------------------
 dataset = pd.read_feather("/projectnb/rcs-intern/Jiazheng/accounting/ShinyApp_Data_OneP.feather")
 now = datetime.datetime.now()
 
@@ -24,9 +22,7 @@ month_order = [
 ]
 dataset['month'] = pd.Categorical(dataset['month'], categories=month_order, ordered=True)
 
-# ---------------------------------------
 # ICONS
-# ---------------------------------------
 ICONS = {
     "min": fa.icon_svg("arrow-down"),
     "max": fa.icon_svg("arrow-up"),
@@ -45,9 +41,7 @@ ICONS = {
     "count": fa.icon_svg("list"),
 }
 PAGE_ID = "oneP"
-# ---------------------------------------
 # UI DEFINITION
-# ---------------------------------------
 def value_box_custom(title, output_id, icon):
     return ui.value_box(
         "",
@@ -66,9 +60,6 @@ def value_box_custom(title, output_id, icon):
 
     
 def oneP_job_ui(selected_year, selected_month):
-    """
-    UI for the 1-p Job page.
-    """
     return ui.page_fluid(
         ui.output_ui("onep_warning_message"),
         ui.div(
@@ -165,19 +156,10 @@ def oneP_job_ui(selected_year, selected_month):
         fillable=True,
     )
 
-# ---------------------------------------
 # SERVER LOGIC
-# ---------------------------------------
 def oneP_job_server(input, output, session, selected_year, selected_month):
-    """
-    Server logic for the 1-p Job page.
-    """
-
     @reactive.Calc
     def oneP_filtered_data():
-        """
-        Filter dataset by selected year, month, and queue type.
-        """
         try:
             year = int(input.selected_year_onep())
         except ValueError:
@@ -200,9 +182,6 @@ def oneP_job_server(input, output, session, selected_year, selected_month):
 
     @reactive.Calc
     def waiting_time_stats():
-        """
-        Calculate summary stats for the filtered dataset.
-        """
         df = oneP_filtered_data()
         if df.empty:
             return dict(min=None, max=None, mean=None, median=None, count=0)
@@ -256,11 +235,6 @@ def oneP_job_server(input, output, session, selected_year, selected_month):
 
     @render_plotly
     def oneP_waiting_time_vs_queue():
-        """
-        Bar plot of median waiting time by job type.
-        Shows top 6 queues with highest waiting time; others are grouped into 'others'.
-        Converts to hours if any value > 100 min.
-        """
         if input.selected_navset_bar() != "1-p Job":
             return None
         df = oneP_filtered_data()
@@ -326,9 +300,6 @@ def oneP_job_server(input, output, session, selected_year, selected_month):
 
     @render_plotly
     def oneP_job_waiting_time_by_day():
-        """
-        Line plot showing median job waiting time (minutes) by day for the selected year/month.
-        """
         if input.selected_navset_bar() != "1-p Job":
             return None
         df = oneP_filtered_data()

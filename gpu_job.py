@@ -6,10 +6,8 @@ import plotly.express as px
 import plotly.graph_objects as go  # For empty Figure
 import datetime
 now = datetime.datetime.now()
-# --------------------------------------------------------------------
-# DATA LOADING & PREP
-# --------------------------------------------------------------------
 
+# DATA LOADING & PREP
 dataset = pd.read_feather("/projectnb/rcs-intern/Jiazheng/accounting/ShinyApp_Data_GPU.feather")
 
 # Ensure 'year' column is integer
@@ -44,9 +42,7 @@ ICONS = {
     "count": fa.icon_svg("list"),
 }
 
-# --------------------------------------------------------------------
 # UI
-# --------------------------------------------------------------------
 PAGE_ID = "gpu_job"
 def value_box_custom(title, output_id, icon):
     return ui.value_box(
@@ -176,10 +172,7 @@ def gpu_job_ui(selected_year, selected_month):
         fillable=True,
     )
 
-# --------------------------------------------------------------------
 # SERVER LOGIC
-# --------------------------------------------------------------------
-
 def gpu_job_server(input, output, session, selected_year, selected_month):
     """
     Server logic for GPU Job page:
@@ -272,7 +265,6 @@ def gpu_job_server(input, output, session, selected_year, selected_month):
 
 
     # ------------------ Plots ------------------
-
     @output(id="GPU_barplot")
     @render_plotly
     def GPU_barplot():
@@ -286,7 +278,7 @@ def gpu_job_server(input, output, session, selected_year, selected_month):
         df = df[df["first_job_waiting_time"] >= 0].copy()
         df["first_job_waiting_time"] = df["first_job_waiting_time"] / 60  # Now in minutes
 
-        # Compute median waiting time per job_type
+        # Compute median waiting time
         medians = df.groupby("job_type")["first_job_waiting_time"].median().reset_index()
 
         # Get top 5 job_types with highest median
@@ -381,7 +373,7 @@ def gpu_job_server(input, output, session, selected_year, selected_month):
         except:
             year, month = None, None
 
-        # Create line plot
+        # plot
         fig = px.line(
             grouped,
             x="day",

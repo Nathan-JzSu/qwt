@@ -15,16 +15,16 @@ dataset = dataset.copy()
 # Define a mapping for job type simplification based on prefixes
 job_type_mapping = {
     "1-p": "1-P",  # Map job types starting with "1-p" to "1-P"
-    "GPU": "GPU",  # Map job types starting with "GPU" to "GPU"
-    "MPI": "MPI",  # Map job types starting with "MPI" to "MPI"
-    "OMP": "OMP"   # Map job types starting with "OMP" to "OMP"
+    "GPU": "GPU", 
+    "MPI": "MPI",  
+    "OMP": "OMP"  
 }
 
 # Apply the mapping using a lambda function
 dataset["job_type"] = dataset["job_type"].apply(
     lambda x: next((v for k, v in job_type_mapping.items() if str(x).startswith(k)), x))
 
-# Handle empty strings (e.g., "   " becomes NaN):
+# Handle empty strings
 dataset["job_type"] = dataset["job_type"].replace("", pd.NA)
 
 # Ensure 'year' is integer
@@ -56,9 +56,7 @@ ICONS = {
     "count": fa.icon_svg("list"),
 }
 
-# --------------------------------------------------------------------
 # UI 
-# --------------------------------------------------------------------
 now = datetime.datetime.now()
 PAGE_ID = "homepage"
 # custom value box to display icon (title output_id) horizontally
@@ -79,12 +77,7 @@ def value_box_custom(title, output_id, icon):
     )
 
 def homepage_ui(selected_year, selected_month):
-    """
-    Build the UI for the homepage, including:
-    - Sidebar with dynamic slider, job_type, and year checkbox groups
-    - Value boxes for summary statistics
-    - Main area with data table and multiple plots
-    """
+    # Build the UI for the homepage, including:
     return ui.page_sidebar(
         ui.sidebar(
             ui.output_ui(f"{PAGE_ID}_dynamic_slider"),  # Dynamically render slider
@@ -100,7 +93,7 @@ def homepage_ui(selected_year, selected_month):
             open="desktop",
         ),
         ui.output_ui(f"{PAGE_ID}_warning_message"),
-        ui.div(  # <== this replaces the layout_columns for inputs
+        ui.div( 
             ui.div(
                 ui.input_text(
                     "selected_year",
@@ -206,44 +199,22 @@ def homepage_ui(selected_year, selected_month):
     )
 
 
-# --------------------------------------------------------------------
 # SERVER LOGIC
-# --------------------------------------------------------------------
-
 def homepage_server(input, output, session, selected_year, selected_month):
-    """
-    Server logic for homepage:
-    - Reactive filtering based on years, job_type, and waiting_time
-    - Calculation of dynamic slider range
-    - Creation of summary statistics and plots
-    """
 
-    # ----------------------------------------------------------------
+    
     # 1) Filter by year only, to determine slider range
-    # ----------------------------------------------------------------
     @reactive.Calc
     def dataset_year_filtered():
-        # try:
-        #     year = int(input.selected_year())
-        # except ValueError:
-        #     year = now.year  # fallback to current year
-        # df_years = dataset[dataset["year"] == year]
-        # return df_years  # <- This was missing
         year, month, warning = selected_year_month()
         if warning or year is None:
             return dataset.iloc[0:0]  # return empty DataFrame
         return dataset[(dataset["year"] == year) & (dataset["month"] == month)]
 
 
-    # ----------------------------------------------------------------
     # 2) Compute slider range based on the year-filtered dataset
-    # ----------------------------------------------------------------
     @reactive.Calc
     def formatted_range():
-        """
-        Decide the unit (Seconds, Minutes, or Hours) and compute
-        the (min, max) range for waiting_time among the year-filtered data.
-        """
         filtered_data = dataset_year_filtered()
         if filtered_data.empty:
             return (0, 0), "Seconds"
@@ -259,21 +230,14 @@ def homepage_server(input, output, session, selected_year, selected_month):
             # Display slider in hours
             return (int(min_time // 3600), int(max_time // 3600) + 1), "Hours"
         elif max_time >= 60:
-            # Display slider in minutes
             return (int(min_time // 60), int(max_time // 60) + 1), "Minutes"
         else:
-            # Display slider in seconds
             return (int(min_time), int(max_time) + 1), "Seconds"
 
-    # ----------------------------------------------------------------
     # 3) Dynamic slider UI
-    # ----------------------------------------------------------------
     @output(id=f"{PAGE_ID}_dynamic_slider")
     @render.ui
     def dynamic_slider():
-        """
-        Dynamically render the slider UI based on the (range, unit).
-        """
         (range_min, range_max), unit_label = formatted_range()
         # Prevent slider rendering if range is invalid
         if range_max <= range_min:
@@ -287,18 +251,9 @@ def homepage_server(input, output, session, selected_year, selected_month):
             value=(range_min, range_max),
         )
 
-    # ----------------------------------------------------------------
     # 4) Final reactive filter: (years + job_type + waiting_time)
-    # ----------------------------------------------------------------
     @reactive.Calc
     def dataset_data():
-        """
-        The fully filtered dataset used for tables & plots.
-        Filters:
-          1) year in input.years()
-          2) job_type in input.job_type()
-          3) waiting_time within the selected slider range
-        """
         (range_min, range_max), unit_label = formatted_range()
         slider_min, slider_max = input.first_job_waiting_time()
 
@@ -331,15 +286,9 @@ def homepage_server(input, output, session, selected_year, selected_month):
 
         return df[["job_type", "first_job_waiting_time", "day", "month", "job_number", "year", "slots"]]
 
-    # ----------------------------------------------------------------
     # 5) Summary stats (min, max, mean, median, count)
-    # ----------------------------------------------------------------
     @reactive.Calc
     def waiting_time_stats():
-        """
-        Return a dict of summary statistics for the filtered data.
-        Times are stored in minutes for easy conversion.
-        """
         df = dataset_data()
         if df.empty:
             return {"min": None, "max": None, "mean": None, "median": None, "count": 0}
@@ -354,9 +303,7 @@ def homepage_server(input, output, session, selected_year, selected_month):
         }
         return stats
 
-    # ----------------------------------------------------------------
     # Value box outputs
-    # ----------------------------------------------------------------
     @output(id=f"{PAGE_ID}_min_waiting_time")
     @render.text
     def min_waiting_time():
@@ -400,18 +347,12 @@ def homepage_server(input, output, session, selected_year, selected_month):
         return str(stats["count"])
 
     
-    # ----------------------------------------------------------------
     # PLOTS
-    # ----------------------------------------------------------------
 
     # 1) Bar plot
     @output(id="all_jobs_barplot")
     @render_plotly
     def all_jobs_barplot():
-        """
-        Median waiting time (minutes) by job type, with optional coloring.
-        Adds extra Y-axis padding for text labels above bars.
-        """
         if "selected_navset_bar" in input and input.selected_navset_bar() != "All Jobs":
             return None
 
@@ -460,12 +401,6 @@ def homepage_server(input, output, session, selected_year, selected_month):
     
     @render_plotly
     def job_waiting_time_by_date():
-        """
-        Box plot of waiting time by submission date (1–31), colored by year.
-        Uses minutes if most jobs wait under 60 minutes, otherwise hours.
-        Limits to 3500 points for performance.
-        Includes job_number in tooltips and displays outliers.
-        """
         if "selected_navset_bar" in input and input.selected_navset_bar() != "All Jobs":
             return None
         data = dataset_data()
@@ -569,9 +504,7 @@ def homepage_server(input, output, session, selected_year, selected_month):
         return year, month, None
 
 
-    # ----------------------------------------------------------------
     # "Select All" & "Unselect All" handlers
-    # ----------------------------------------------------------------
     @reactive.effect
     @reactive.event(input.select_all)
     def _():
